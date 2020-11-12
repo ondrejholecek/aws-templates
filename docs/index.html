@@ -1,49 +1,181 @@
 <html>
 <head>
-	<title>Test</title>
+	<title>FortiGate native same-zone A-P HA in AWS</title>
+
+	<style>
+		input[type=button] {
+			width: 100%;
+		}
+
+		span.step {
+			display: block;
+			font-size: 1.05em;
+			font-weight: bold;
+			padding-bottom: 0.5em;
+			padding-top: 0.5em;
+		}
+
+		p.note {
+			font-style: italic;
+			font-size: 0.8em;
+		}
+
+		div[name=indent1] {
+			padding-left: 3em;
+		}
+
+		table#config-intrazone-nics-second, table#config-intrazone-ec2-second, table#config-intrazone-fgt-second {
+			display: none;
+		}
+
+
+		tr.disabled td {
+			color: lightgrey;
+		}
+
+		tr.disabled td input {
+			color: inherit;
+		}
+
+		ul {
+			max-width: 40em;
+		}
+
+		p {
+			max-width: 40em;
+		}
+
+		#dialog-iam-role-unicast-ha {
+			display: none;
+		}
+	</style>
 
 	<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+	<script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
 	<script src="networks.js"></script>
 
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/smoothness/jquery-ui.css"/>
 	<script>
+		var configuring_device = 1;
+
+		function switch_device() {
+			configuring_device = $(this).val();
+
+			if (configuring_device == 1) {
+				$('#config-intrazone-nics-second').hide()
+				$('#config-intrazone-nics-first').show()
+				$('#config-intrazone-ec2-second').hide()
+				$('#config-intrazone-ec2-first').show()
+				$('#config-intrazone-fgt-second').hide()
+				$('#config-intrazone-fgt-first').show()
+			} else {
+				$('#config-intrazone-nics-first').hide()
+				$('#config-intrazone-nics-second').show()
+				$('#config-intrazone-ec2-first').hide()
+				$('#config-intrazone-ec2-second').show()
+				$('#config-intrazone-fgt-first').hide()
+				$('#config-intrazone-fgt-second').show()
+			}
+
+			$('input[data-type=deviceSelector]').each(function(index, element) {
+				if ($(element).val() == configuring_device) {
+					$(element).prop("checked", true);
+				} else {
+					$(element).prop("checked", false);
+				}
+			});
+		}
+
+		function generate_vpc_config() {
+			let ip   = IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=vpcNetwork]').val());
+			let mask = IPv4_cidr_to_number($('#config-intrazone-vpc input[type=text][name=vpcMask]').val());
+			let external = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.1.0"));
+			let internal = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.2.0"));
+			let ha       = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.3.0"));
+			let mgmt     = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.4.0"));
+
+			$('#config-intrazone-vpc input[type=text][name=externalNetwork]').val(external);
+			$('#config-intrazone-vpc input[type=text][name=internalNetwork]').val(internal);
+			$('#config-intrazone-vpc input[type=text][name=haNetwork]').val(ha);
+			$('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val(mgmt);
+			$('#config-intrazone-vpc input[type=text][name=externalMask]').val("24");
+			$('#config-intrazone-vpc input[type=text][name=internalMask]').val("24");
+			$('#config-intrazone-vpc input[type=text][name=haMask]').val("24");
+			$('#config-intrazone-vpc input[type=text][name=mgmtMask]').val("24");
+		}
+
+		function generate_nics_config() {
+			// first device
+			let port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+101);
+			let port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+100);
+			let port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+101);
+			let port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+100);
+			let port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+101);
+			let port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+101);
+
+			$('#config-intrazone-nics-first input[type=text][name=port1PrimaryIp]').val(port1primary);
+			$('#config-intrazone-nics-first input[type=text][name=port1SecondaryIp]').val(port1secondary);
+			$('#config-intrazone-nics-first input[type=text][name=port2PrimaryIp]').val(port2primary);
+			$('#config-intrazone-nics-first input[type=text][name=port2SecondaryIp]').val(port2secondary);
+			$('#config-intrazone-nics-first input[type=text][name=port3PrimaryIp]').val(port3primary);
+			$('#config-intrazone-nics-first input[type=text][name=port4PrimaryIp]').val(port4primary);
+
+			$('#config-intrazone-ec2-first input[type=text][name=port1PrimaryIp]').val(port1primary);
+			$('#config-intrazone-ec2-first input[type=text][name=port1SecondaryIp]').val(port1secondary);
+
+			// second device
+			port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+102);
+			port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+100);
+			port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+102);
+			port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+100);
+			port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+102);
+			port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+102);
+
+			$('#config-intrazone-nics-second input[type=text][name=port1PrimaryIp]').val(port1primary);
+			$('#config-intrazone-nics-second input[type=text][name=port1SecondaryIp]').val(port1secondary);
+			$('#config-intrazone-nics-second input[type=text][name=port2PrimaryIp]').val(port2primary);
+			$('#config-intrazone-nics-second input[type=text][name=port2SecondaryIp]').val(port2secondary);
+			$('#config-intrazone-nics-second input[type=text][name=port3PrimaryIp]').val(port3primary);
+			$('#config-intrazone-nics-second input[type=text][name=port4PrimaryIp]').val(port4primary);
+
+			$('#config-intrazone-ec2-second input[type=text][name=port1PrimaryIp]').val(port1primary);
+			$('#config-intrazone-ec2-second input[type=text][name=port1SecondaryIp]').val(port1secondary);
+		}
+
 		function generate_intrazone_config() {
 			let config = "";
 
 			// global settings
 			config += 'config system global\n';
-			config += '    set hostname '        + $('#config-intrazone-fgt input[type=text][name=hostname]').val()       +'\n';
-			config += '    set admintimeout '    + $('#config-intrazone-fgt input[type=text][name=admintimeout]').val()   +'\n';
-			config += '    set timezone '        + $('#config-intrazone-fgt input[type=text][name=timezone]').val()       +'\n';
+			config += '    set hostname '        + $('#config-intrazone-fgt-first input[type=text][name=hostname]').val()       +'\n';
+			config += '    set admintimeout '    + $('#config-intrazone-fgt-first input[type=text][name=admintimeout]').val()   +'\n';
+			config += '    set timezone '        + $('#config-intrazone-fgt-first input[type=text][name=timezone]').val()       +'\n';
 			config += 'end\n';
 			config += '\n';
 			
 			// interfaces
-			config += 'config system interfaces\n';
+			config += 'config system interface\n';
 			config += '    edit port1\n';
 			config += '        set mode static\n';
-			config += '        set ip '    + $('#config-intrazone-fgt input[type=text][name=port1ip]').val()   +'\n';
-			config += '        set allowaccess ping\n';
+			config += '        set ip '    + $('#config-intrazone-nics-first input[type=text][name=port1SecondaryIp]').val() + '/' + $('#config-intrazone-vpc input[type=text][name=externalMask]').val() +'\n';
+			config += '        set allowaccess ping ssh\n';
 			config += '        set alias external\n';
 			config += '    next\n';
 			config += '    edit port2\n';
 			config += '        set mode static\n';
-			config += '        set ip '    + $('#config-intrazone-fgt input[type=text][name=port2ip]').val()   +'\n';
+			config += '        set ip '    + $('#config-intrazone-nics-first input[type=text][name=port2SecondaryIp]').val() + '/' + $('#config-intrazone-vpc input[type=text][name=internalMask]').val() +'\n';
 			config += '        set allowaccess ping\n';
 			config += '        set alias internal\n';
 			config += '    next\n';
 			config += '    edit port3\n';
 			config += '        set mode static\n';
-			config += '        set ip '    + $('#config-intrazone-fgt input[type=text][name=port3ip]').val()   +'\n';
+			config += '        set ip '    + $('#config-intrazone-nics-first input[type=text][name=port3PrimaryIp]').val() + '/' + $('#config-intrazone-vpc input[type=text][name=haMask]').val() +'\n';
 			config += '        set allowaccess ping\n';
 			config += '        set alias ha\n';
 			config += '    next\n';
 			config += '    edit port4\n';
-			if ($('#config-intrazone-fgt input[type=text][name=port4ip]').val().length > 0) {
 			config += '        set mode static\n';
-			config += '        set ip '    + $('#config-intrazone-fgt input[type=text][name=port4ip]').val()   +'\n';
-			} else {
-			config += '        set mode dhcp\n';
-			}
+			config += '        set ip '    + $('#config-intrazone-nics-first input[type=text][name=port4PrimaryIp]').val() + '/' + $('#config-intrazone-vpc input[type=text][name=mgmtMask]').val() +'\n';
 			config += '        set allowaccess ping ssh https\n';
 			config += '        set alias management\n';
 			config += '    next\n';
@@ -51,9 +183,9 @@
 			config += '\n';
 
 			// routing
-			if ($('#config-intrazone-fgt input[type=checkbox][name=default-route-port1]').is(':checked')) {
-				let ip   = IPv4_string_to_number($('#config-intrazone-fgt input[type=text][name=port1ip]').val());
-				let mask = IPv4_cidr_to_number($('#config-intrazone-fgt input[type=text][name=port1mask]').val());
+			if ($('#config-intrazone-fgt-first input[type=checkbox][name=default-route-port1]').is(':checked')) {
+				let ip   = IPv4_string_to_number($('#config-intrazone-nics-first input[type=text][name=port1SecondaryIp]').val());
+				let mask = IPv4_cidr_to_number($('#config-intrazone-vpc input[type=text][name=externalMask]').val());
 				let dgw  = IPv4_number_to_string((ip&mask)+1);
 
 				config += 'config router static\n';
@@ -78,14 +210,18 @@
 			config += '        next\n';
 			config += '    end\n';
 			config += '    set override enable\n';
-			config += '    set priority ' + $('#config-intrazone-fgt input[type=text][name=ha-priority]').val() + '\n';
+			config += '    set priority ' + $('#config-intrazone-fgt-first input[type=text][name=ha-priority]').val() + '\n';
 			config += '    set unicast-hb enable\n';
-			config += '    set unicast-hb-peerip ' + $('#config-intrazone-fgt input[type=text][name=ha-peer]').val() + '\n';
+			if (configuring_device == 1) {
+			config += '    set unicast-hb-peerip ' + $('#config-intrazone-nics-second input[type=text][name=port3PrimaryIp]').val() + '\n';
+			} else {
+			config += '    set unicast-hb-peerip ' + $('#config-intrazone-nics-first input[type=text][name=port3PrimaryIp]').val() + '\n';
+			}
 			config += 'end\n';
 			config += '\n';
 
 			// firewall policies
-			if ($('#config-intrazone-fgt input[type=checkbox][name=policy-default]').is(':checked')) {
+			if ($('#config-intrazone-fgt-first input[type=checkbox][name=policy-default]').is(':checked')) {
 				config += 'config firewall policy\n';
 				config += '    edit 1\n';
 				config += '        set name "default from internal to external"\n';
@@ -106,31 +242,171 @@
 		}
 
 		function onload() {
-			$('#config-intrazone-fgt input[type=button][name=generate]').click(generate_intrazone_config);
+			$('#config-intrazone-vpc  input[type=button][name=generate]').click(generate_vpc_config);
+			$('#config-intrazone-nics-first  input[type=button][name=generate]').click(generate_nics_config);
+			$('#config-intrazone-nics-second input[type=button][name=generate]').click(generate_nics_config);
+			$('#config-intrazone-ec2-first  input[type=button][name=generate]').click(generate_nics_config);
+			$('#config-intrazone-ec2-second input[type=button][name=generate]').click(generate_nics_config);
+			$('input[data-type=deviceSelector]').change(switch_device);
+			$('#config-intrazone-fgt-first  input[type=button][name=generate]').click(generate_intrazone_config);
 		}
 	</script>
 </head>
 <body onload="onload()">
-	<h1>AAA</h1>
+	<h1>FortiGate native same-zone A-P HA in AWS</h1>
 
-	<table id="config-intrazone-fgt">
-		<tr><td>Hostname:</td><td><input type="text" name="hostname" value="fgt"/></td><tr>
-		<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
-		<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
-		<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
+	<div name="manual-intrazone-step-vpc">
+		<h2>&#8227; Create VPC configuration</h2>
+		<div name="indent1">
+			<span class="step">1. Create VPC with specified IP range and 4 subnets with IP ranges from the VPC range.</span>
+	
+			<p>Make sure you explicitly select the same "Availablity zone" when creating the subnets.</p>
+	
+			<table id="config-intrazone-vpc">
+				<tr><td>VPC address range:</td><td><input type="text" name="vpcNetwork" value="10.0.0.0"/> / <input type="text" name="vpcMask" value="16" readonly size="2"/></td><tr>
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate subnets configuration"/></td></tr>
+				<tr><td>External subnet:</td><td><input type="text" name="externalNetwork" value=""/> / <input type="text" name="externalMask" value="24" size="2"/></td><tr>
+				<tr><td>Internal subnet:</td><td><input type="text" name="internalNetwork" value=""/> / <input type="text" name="internalMask" value="24" size="2"/></td><tr>
+				<tr><td>HA subnet:</td><td><input type="text" name="haNetwork" value=""/> / <input type="text" name="haMask" value="24" size="2"/></td><tr>
+				<tr><td>Management subnet:</td><td><input type="text" name="mgmtNetwork" value=""/> / <input type="text" name="mgmtMask" value="24" size="2"/></td><tr>
+			</table>
+	
+			<span class="step">2. Create Internet gateway and attach it to VPC.</span>
+			<p class="note">This will allow future public IPs to be reachable correctly.</p>
+	
+			<span class="step">3. Create new routing table and attach it to external subnet.</span>
+			<p>In the routing table create new with destination "0.0.0.0/0" routed via VPC Internet gateway.</p>
+			<p class="note">This is necessary for the shared public IP that will be attached later.</p>
+	
+			<span class="step">4. Create new routing table and attach it to management subnet.</span>
+			<p>In the routing table create new with destination "0.0.0.0/0" routed via VPC Internet gateway.</p>
+			<p class="note">This is necessary for the management public IP that will be attached later.</p>
+	
+			<span class="step">5. Create 3 new Elastic (public) IP addresses.</span>
+			<p>Create but do not attach them yet.</p>
+			<ol>
+			<li>Shared by FortiGates and always pointing to actual master's port1 ("external") interface.
+			<li>First FortiGate management always pointing to its port4 ("management") interface.
+			<li>Second FortiGate management always pointing to its port4 ("management") interface.
+			</ol>
+		</div>
 
-		<tr><td>Port1 ("external") virtual IP/mask (secondary IP in AWS console):</td><td><input type="text" name="port1ip" value="10.0.1.100"/> / <input type="text" name="port1mask" value="24" size="2"/></td><tr>
-		<tr><td>Port2 ("internal") virtual IP/mask (secondary IP in AWS console):</td><td><input type="text" name="port2ip" value="10.0.2.100"/> / <input type="text" name="port2mask" value="24" size=2"/></td><tr>
-		<tr><td>Port3 ("ha") IP/mask:</td><td><input type="text" name="port3ip" value="10.0.3.101"/> / <input type="text" name="port3mask" value="24" size="2"/></td><tr>
-		<tr><td>Port4 ("management") IP/mask (keep empty for DHCP assigned):</td><td><input type="text" name="port4ip" value=""/> / <input type="text" name="port4mask" value="" size="2"/></td><tr>
-		<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
+		<h2>&#8227; Create additional network interfaces</h2>
+		<div name="indent1">
+			<input type="radio" id="config-intrazone-nics-selected-device1" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="1" checked>
+			<label for="config-intrazone-nics-selected-device1">First FortiGate</label>
+			<input type="radio" id="config-intrazone-nics-selected-device2" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="2">
+			<label for="config-intrazone-nics-selected-device2">Second FortiGate</label>
 
-		<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
-		<tr><td>HA peer IP:</td><td><input type="text" name="ha-peer" value="10.0.3.102"/></td><tr>
+			<p class="note">This is necessary because when deploying new VM via AWS console,
+			                max 2 NICs can be specified but we need 4.
+			</p>
+			<p class="note">We explicitly create NICs for port2, port3 and port4. Interface port1
+			                will be created later by AWS when deploying the VM. Its value is shown
+			                here just for overview.
+			</p>
 
-		<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
-	</table>
+			<table id="config-intrazone-nics-first">
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+				<tr class="disabled"><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
+				<tr class="disabled"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+				<tr><td>Port2 ("internal") primary IP:</td><td><input type="text" name="port2PrimaryIp" value=""/></td></tr>
+				<tr><td>Port2 ("internal") secondary IP:</td><td><input type="text" name="port2SecondaryIp" value=""/></td></tr>
+				<tr><td>Port3 ("ha") primary IP:</td><td><input type="text" name="port3PrimaryIp" value=""/></td></tr>
+				<tr><td>Port4 ("management") primary IP:</td><td><input type="text" name="port4PrimaryIp" value=""/></td></tr>
+			</table>
+
+			<table id="config-intrazone-nics-second">
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+				<tr class="disabled"><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
+				<tr class="disabled"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+				<tr><td>Port2 ("internal") primary IP:</td><td><input type="text" name="port2PrimaryIp" value=""/></td></tr>
+				<tr><td>Port2 ("internal") secondary IP:</td><td><input type="text" name="port2SecondaryIp" value=""/></td></tr>
+				<tr><td>Port3 ("ha") primary IP:</td><td><input type="text" name="port3PrimaryIp" value=""/></td></tr>
+				<tr><td>Port4 ("management") primary IP:</td><td><input type="text" name="port4PrimaryIp" value=""/></td></tr>
+			</table>
+		</div>
+
+		<h2>&#8227; Create new VM (EC2 instance)</h2>
+		<div name="indent1">
+			<input type="radio" id="config-intrazone-ec2-selected-device1" name="config-intrazone-ec2-selected-device" data-type="deviceSelector" value="1" checked>
+			<label for="config-intrazone-ec2-selected-device1">First FortiGate</label>
+			<input type="radio" id="config-intrazone-ec2-selected-device2" name="config-intrazone-ec2-selected-device" data-type="deviceSelector" value="2">
+			<label for="config-intrazone-ec2-selected-device2">Second FortiGate</label>
+
+			<p>Important stuff to specify:
+			<ul>
+			<li>Specify the <a href="javascript:$('#dialog-iam-role-unicast-ha').dialog({resizable: false, modal: true, width:'auto', position: {my: 'center', at: 'center', of: window}})">right IAM role</a>
+			    with privileges to update networking configuration of EC2 instances.  In Fortinet EMEA TAC account the role name is "FortiOS_unicast_HA".
+			</li>
+			<li>Select the right VPC name and because AWS will create port1, select the subnet "external".</li>
+			</ul>
+
+			<table id="config-intrazone-ec2-first">
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+				<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
+				<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+			</table>
+
+			<table id="config-intrazone-ec2-second">
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+				<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
+				<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+			</table>
+
+			<h3>User data (preload configuration)</h3>
+			<p>Make sure that the IP fields above are filled correctly or it will not work!</p>
+
+			<table id="config-intrazone-fgt-first">
+				<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt1"/></td><tr>
+				<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
+				<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
+				<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
+				<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
+		
+				<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
+		
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
+			</table>
+
+			<table id="config-intrazone-fgt-second">
+				<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt2"/></td><tr>
+				<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
+				<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
+				<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
+				<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
+		
+				<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="100"/></td><tr>
+		
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
+			</table>
+
+		</div>
+	</div>
 
 	<textarea id="config"></textarea>
+
+
+<div id="dialog-iam-role-unicast-ha" title="IAM role for FortiGate unicast HA">
+<pre>
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:Describe*",
+                "ec2:UnassignPrivateIpAddresses",
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:AssociateAddress",
+                "ec2:ReplaceRoute",
+                "eks:ListClusters"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+</pre>
+</div>
 </body>
 </html>
