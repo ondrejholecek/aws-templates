@@ -218,10 +218,55 @@
 			config += 'end\n';
 			config += '\n';
 
+			// ipsec configuration
+			if ($('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=checkbox][name=ipsec]').is(':checked')) {
+				// local user
+				config += 'config user local\n';
+				config += '    edit "client"\n';
+				config += '        set type password\n';
+				config += '        set passwd "' + $('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=text][name=ipsec-client-password]').val() + '"\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
+				// local user group
+				config += 'config user group\n';
+				config += '    edit "vpnclients"\n';
+				config += '        set member "client"\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
+				// phase 1
+				config += 'config vpn ipsec phase1-interface\n';
+				config += '    edit "clients"\n';
+				config += '        set type dynamic\n';
+				config += '        set interface "port1"\n';
+				config += '        set mode aggressive\n';
+				config += '        set peertype any\n';
+				config += '        set mode-cfg enable\n';
+				config += '        set localid "fgtaws"\n';
+				config += '        set xauthtype auto\n';
+				config += '        set authusrgrp "vpnclients"\n';
+				config += '        set ipv4-start-ip 169.254.111.2\n';
+				config += '        set ipv4-end-ip 169.254.111.254\n';
+				config += '        set psksecret "' + $('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=text][name=ipsec-psk]').val() + '"\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
+				// phase 2
+				config += 'config vpn ipsec phase2-interface\n';
+				config += '    edit "clients"\n';
+				config += '        set phase1name "clients"\n';
+				config += '        set keepalive enable\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
+			}
+
 			// firewall policies
 			if ($('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=checkbox][name=policy-default]').is(':checked')) {
 				config += 'config firewall policy\n';
-				config += '    edit 1\n';
+
+				config += '    edit 0\n';
 				config += '        set name "default from internal to external"\n';
 				config += '        set srcintf "port2"\n';
 				config += '        set dstintf "port1"\n';
@@ -232,6 +277,21 @@
 				config += '        set service "ALL"\n';
 				config += '        set nat enable\n';
 				config += '    next\n';
+
+				if ($('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=checkbox][name=ipsec]').is(':checked')) {
+					config += '    edit 0\n';
+					config += '        set name "ipsec from external to internal"\n';
+					config += '        set srcintf "clients"\n';
+					config += '        set dstintf "port2"\n';
+					config += '        set srcaddr "all"\n';
+					config += '        set dstaddr "all"\n';
+					config += '        set action accept\n';
+					config += '        set schedule "always"\n';
+					config += '        set service "ALL"\n';
+					config += '        set nat enable\n';
+					config += '    next\n';
+				}
+
 				config += 'end\n';
 				config += '\n'
 			}
@@ -250,6 +310,16 @@
 			generate_intrazone_config();
 		}
 
+		function switch_section_ipsec(e) {
+			if ($(e.target).is(':checked')) {
+				$('#config-intrazone-fgt-first input[name=ipsec-psk]').parents('tr').first().show(500);
+				$('#config-intrazone-fgt-first input[name=ipsec-client-password]').parents('tr').first().show(500);
+			} else {
+				$('#config-intrazone-fgt-first input[name=ipsec-psk]').parents('tr').first().hide(500);
+				$('#config-intrazone-fgt-first input[name=ipsec-client-password]').parents('tr').first().hide(500);
+			}
+		}
+
 		function onload() {
 			$('#config-intrazone-vpc  input[type=button][name=generate]').click(generate_vpc_config);
 			$('#config-intrazone-nics-first  input[type=button][name=generate]').click(generate_nics_config);
@@ -263,6 +333,8 @@
 			$('#config-intrazone-fgt-second input[type=button][name=generate]').click(function() {
 				generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});
 			});
+
+			$('#config-intrazone-fgt-first input[type=checkbox][name=ipsec]').change(switch_section_ipsec);
 		}
 	</script>
 </head>
@@ -331,15 +403,12 @@
 				<tr><td>Port4 ("management") primary IP:</td><td><input type="text" name="port4PrimaryIp" value=""/></td></tr>
 			</table>
 
-			<table id="config-intrazone-nics-second">
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
-				<tr class="disabled"><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
-				<tr class="disabled"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
-				<tr><td>Port2 ("internal") primary IP:</td><td><input type="text" name="port2PrimaryIp" value=""/></td></tr>
-				<tr><td>Port2 ("internal") secondary IP:</td><td><input type="text" name="port2SecondaryIp" value=""/></td></tr>
-				<tr><td>Port3 ("ha") primary IP:</td><td><input type="text" name="port3PrimaryIp" value=""/></td></tr>
-				<tr><td>Port4 ("management") primary IP:</td><td><input type="text" name="port4PrimaryIp" value=""/></td></tr>
-			</table>
+			<script>
+				original = $('#config-intrazone-nics-first');
+				clone = original.clone();
+				clone.attr("id", "config-intrazone-nics-second");
+				clone.insertAfter(original);
+			</script>
 		</div>
 
 		<h2>&#8227; Create new VM (EC2 instance)</h2>
@@ -378,23 +447,23 @@
 				<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
 				<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
 				<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
+				<tr><td>Create IPSec VPN responder configuration:</td><td><input type="checkbox" name="ipsec" checked/></td><tr>
+				<tr><td>IPSec preshared secret:</td><td><input type="text" name="ipsec-psk" value="FortiAws99!"/></td><tr>
+				<tr><td>IPSec XAUTH "client" password:</td><td><input type="text" name="ipsec-client-password" value="client"/></td><tr>
 		
 				<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
 		
 				<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
 			</table>
 
-			<table id="config-intrazone-fgt-second">
-				<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt2"/></td><tr>
-				<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
-				<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
-				<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
-				<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
-		
-				<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="100"/></td><tr>
-		
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
-			</table>
+			<script>
+				original = $('#config-intrazone-fgt-first');
+				clone = original.clone();
+				clone.attr("id", "config-intrazone-fgt-second");
+				clone.find('input[type=text][name=hostname]').val("awsfgt2");
+				clone.find('input[type=text][name=ha-priority]').val("100");
+				clone.insertAfter(original);
+			</script>
 
 		</div>
 	</div>
