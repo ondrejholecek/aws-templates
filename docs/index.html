@@ -456,10 +456,10 @@
 			<li>In EC2 AWS console launch a new instance and in "AWS Marketplace" section find FortiGate. There are two types of images available:
 				<ul>
 				<li><b>PAYG</b> : No explicit VM license is needed but the price is higher by the fee paid to Fortinet for using the FortiGate VM.
-				                  With this image the pre-configuration bellow works perfectly because all features are available right after boot.</li>
+				                  The auto-configuration used in this guide always works correctly.
 				<li><b>BYOL</b> : When VM of this type boots up, not all features are configurable until user uploads the valid FortiGate VM license.
-				                  This causes a small issue with pre-configuration bellow because "config system ha" and "config firewall policy"
-				                  sections must be manually re-configured (copy &amp; paste is ok) after the license is uploaded and validated.</li>
+				                  Based on experience, this guide usually works as right as for PAYG images, but if something hasn't auto-configured
+				                  correctly, check the configuration on FortiGate and copy &amp; paste missing sections if needed.
 				</ul></li>
 			<li>At the instance size select "t3.xlarge". <span class="note">(At least four network interfaces are needed which means the instance must
 			    have at least four CPUs.)</span>
@@ -532,11 +532,6 @@
 			<ul>
 			<li>It should be possible to ping &amp; SSH to the master FortiGate using the <b>shared</b> public IP.</li>
 			<li>It should be possible to ping &amp; SSH to the both FortiGates using the right <b>mgmt</b> public IP.</li>
-			</ul>
-			<p><span class="note">Note: If BYOL image was used, now it is necessary to SSH to master and slave FortiGates using the dedicated
-			   management addresses and copy &amp; paste the "config firewall policy" and "config system ha" sections from
-			   the original config file.</span></p>
-			<ul>
 			<li>HA status should show both FortiGate and the cluster checksum should match.
 			    <span class="note">(Synchronizing the configuration can however take few minutes.)</span></li>
 			<li>It should be possible to connect as "client" user to the aggresive mode IPSec responder listening on the
