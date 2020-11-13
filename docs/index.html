@@ -525,6 +525,14 @@
 			</ul>
 		</div>
 
+		<h2>Finish the network interfaces configuration</h2>
+		<div name="indent1">
+			<ul>
+			<li>For port1 and port2 interfaces of both FortiGates, right click, select <b>Change Source/Dest. Check</b> and disable it.
+			    <span class="note">(This is to allow FortiGate to perform the routing function which is by default forbidden in AWS.)</span>
+			</ul>
+		</div>
+
 		<h2>Test</h2>
 		<div name="indent1">
 			<span class="note">Be aware that FortiGate will reboot during the initial deployment and then again when it validates the license.</span>
