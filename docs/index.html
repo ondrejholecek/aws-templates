@@ -11,10 +11,11 @@
 	<script src="switch_device.js"></script>
 	<script src="depends.js"></script>
 
-	<link rel="stylesheet" href="document.css"/>
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/smoothness/jquery-ui.css"/>
 	<link rel="preconnect" href="https://fonts.gstatic.com">
 	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="document.css"/>
 
 	<script>
 		function generate_vpc_config() {
@@ -280,6 +281,23 @@
 			cloning_setup();
 			switch_device_setup();
 			depends_setup();
+
+			// add easy open function to all dialogs
+			$('[data-type=dialog]').each(function (index, element) {
+				$(element).bind('openDialog', function() {
+					$(element).dialog({
+						resizable: false,
+						modal: true,
+						height:'auto',
+						width:'auto',
+						position: {
+							my: 'center',
+							at: 'center',
+							of: '#overlay'
+						}
+					});
+				});
+			});
 		}
 	</script>
 </head>
@@ -427,8 +445,8 @@
 					<li><b>Network</b> : The VPC you created in the first section of this guide.</li>
 					<li><b>Subnet</b> : The external subnet you created before. AWS will use this as port1 FortiGate interface.</li>
 					<li><b>IAM role</b> : "FortiOS_unicast_HA" - this is the role pre-created in the Fortinet EMEA TAC account. If you are deploying this in another account, 
-					                      <a href="javascript:$('#dialog-iam-role-unicast-ha').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}})">
-					                      the right IAM role</a> must be created in advance.</li>
+					    <a href="javascript:$('#dialog-iam-role-unicast-ha').trigger('openDialog')">
+					    the right IAM role</a> must be created in advance.</li>
 					<li><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary IP addresses based on the following table:
 						<br/><br/>
 						<div data-generate="switch-device"></div>
@@ -457,7 +475,7 @@
 					
 							<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
 					
-							<tr><td colspan="2"><input type="button" name="generate" value="Generate config script" onclick="generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});"/></td></tr>
+							<tr><td colspan="2"><input type="button" name="generate" value="Generate config script" onclick="generate_intrazone_config() && $('#dialog-userdata').trigger('openDialog')"/></td></tr>
 						</table>
 					</li>
 				</ul></li>
@@ -509,11 +527,11 @@
 
 <!-- Additional divs that have special meaning - like dialogs etc. -->
 
-<div id="dialog-userdata" title="User data field contents">
+<div id="dialog-userdata" title="User data field contents" data-type="dialog">
 	<textarea name="config"></textarea>
 </div>
 
-<div id="dialog-iam-role-unicast-ha" title="IAM role for FortiGate unicast HA">
+<div id="dialog-iam-role-unicast-ha" title="IAM role for FortiGate unicast HA" data-type="dialog">
 <pre>
 {
     "Version": "2012-10-17",
@@ -541,5 +559,9 @@
 		<input type="button" value="Fill all default values" onclick="generate_default_config()"/>
 	</fieldset>
 </div>
+
+<div id="overlay">
+</div>
+
 </body>
 </html>

@@ -5,6 +5,16 @@ body {
 	background: lightgrey;
 }
 
+#overlay {
+	position: fixed;
+	z-index: -1;
+	top: 0px;
+	left: 0px;
+	width: 100vw;
+	height: 100vh;
+	display: block;
+}
+
 h1, h2, h3 {
 	color: #008b10;
 }
