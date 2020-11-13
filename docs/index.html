@@ -63,12 +63,12 @@
 
 		function generate_nics_config() {
 			// first device
-			let port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+101);
-			let port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+100);
-			let port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+101);
-			let port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+100);
-			let port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+101);
-			let port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+101);
+			let port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+4);
+			let port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+6);
+			let port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+4);
+			let port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+6);
+			let port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+4);
+			let port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+4);
 
 			$('#config-intrazone-nics-first input[type=text][name=port1PrimaryIp]').val(port1primary);
 			$('#config-intrazone-nics-first input[type=text][name=port1SecondaryIp]').val(port1secondary);
@@ -81,12 +81,12 @@
 			$('#config-intrazone-ec2-first input[type=text][name=port1SecondaryIp]').val(port1secondary);
 
 			// second device
-			port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+102);
-			port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+100);
-			port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+102);
-			port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+100);
-			port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+102);
-			port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+102);
+			port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+5);
+			port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=externalNetwork]').val())+6);
+			port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+5);
+			port2secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=internalNetwork]').val())+6);
+			port3primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=haNetwork]').val())+5);
+			port4primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=mgmtNetwork]').val())+5);
 
 			$('#config-intrazone-nics-second input[type=text][name=port1PrimaryIp]').val(port1primary);
 			$('#config-intrazone-nics-second input[type=text][name=port1SecondaryIp]').val(port1secondary);
