@@ -280,18 +280,6 @@
 			cloning_setup();
 			switch_device_setup();
 			depends_setup();
-
-			$('#config-intrazone-vpc  input[type=button][name=generate]').click(generate_vpc_config);
-			$('#config-intrazone-nics-first  input[type=button][name=generate]').click(generate_nics_config);
-			$('#config-intrazone-nics-second input[type=button][name=generate]').click(generate_nics_config);
-			$('#config-intrazone-ec2-first  input[type=button][name=generate]').click(generate_nics_config);
-			$('#config-intrazone-ec2-second input[type=button][name=generate]').click(generate_nics_config);
-			$('#config-intrazone-fgt-first  input[type=button][name=generate]').click(function() {
-				generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});
-			});
-			$('#config-intrazone-fgt-second input[type=button][name=generate]').click(function() {
-				generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});
-			});
 		}
 	</script>
 </head>
@@ -358,7 +346,7 @@
 	
 			<table id="config-intrazone-vpc">
 				<tr><td>VPC address range:</td><td><input type="text" name="vpcNetwork" value="10.0.0.0"/> / <input type="text" name="vpcMask" value="16" readonly size="2"/></td><tr>
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate subnets configuration"/></td></tr>
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate subnets configuration" onclick="generate_vpc_config()"/></td></tr>
 				<tr><td>External subnet:</td><td><input type="text" name="externalNetwork" value=""/> / <input type="text" name="externalMask" value="24" size="2"/></td><tr>
 				<tr><td>Internal subnet:</td><td><input type="text" name="internalNetwork" value=""/> / <input type="text" name="internalMask" value="24" size="2"/></td><tr>
 				<tr><td>HA subnet:</td><td><input type="text" name="haNetwork" value=""/> / <input type="text" name="haMask" value="24" size="2"/></td><tr>
@@ -411,7 +399,7 @@
 
 			<div data-generate="switch-device"></div>
 			<table id="config-intrazone-nics-first" data-clone="config-intrazone-nics-second" data-switch="device-specific">
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets" onclick="generate_nics_config()"/></td></tr>
 				<tr class="disabled"><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
 				<tr class="disabled"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
 				<tr><td>Port2 ("internal") primary IP:</td><td><input type="text" name="port2PrimaryIp" value=""/></td></tr>
@@ -445,7 +433,7 @@
 						<br/><br/>
 						<div data-generate="switch-device"></div>
 						<table id="config-intrazone-ec2-first" data-clone="config-intrazone-ec2-second" data-switch="device-specific">
-							<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+							<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets" onclick="generate_nics_config()"/></td></tr>
 							<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
 							<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
 						</table>
@@ -469,7 +457,7 @@
 					
 							<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
 					
-							<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
+							<tr><td colspan="2"><input type="button" name="generate" value="Generate config script" onclick="generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});"/></td></tr>
 						</table>
 					</li>
 				</ul></li>
