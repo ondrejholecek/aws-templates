@@ -342,7 +342,7 @@
 	<div id="main-content">
 	<h1>FortiGate native same-zone A-P HA in AWS</h1>
 
-	<h2>&#8227; Design</h2>
+	<h2>Design</h2>
 
 	<div name="indent1">
 
@@ -387,7 +387,7 @@
 	</div>
 
 	<div name="manual-intrazone-step-vpc">
-		<h2>&#8227; Create VPC configuration</h2>
+		<h2>Create VPC configuration</h2>
 		<div name="indent1">
 			<h3>Create VPC with specified IP range and 4 subnets with IP ranges from the VPC range.</h3>
 	
@@ -438,7 +438,7 @@
 			<p><span class="note">At this moment there are no VMs to attach the public IP to, so this fill be finished later.</span></p>
 		</div>
 
-		<h2>&#8227; Create additional network interfaces</h2>
+		<h2>Create additional network interfaces</h2>
 		<div name="indent1">
 			<p><span class="note">In AWS maximum of two network interfaces can be specified when deploying new VM (instance). Because we need four of them,
 			                      we will create port2, port3 and port4 AWS interfaces manually and let AWS deployment wizzard to create only port1.
@@ -452,10 +452,12 @@
 			<li>For port3 and port4 specify only primary IP address.</li>
 			</ul>
 
-			<input type="radio" id="config-intrazone-nics-selected-device1" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="1" checked>
-			<label for="config-intrazone-nics-selected-device1">First FortiGate</label>
-			<input type="radio" id="config-intrazone-nics-selected-device2" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="2">
-			<label for="config-intrazone-nics-selected-device2">Second FortiGate</label>
+			<div name="select-device">
+				<input type="radio" id="config-intrazone-nics-selected-device1" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="1" checked>
+				<label for="config-intrazone-nics-selected-device1">First FortiGate</label>
+				<input type="radio" id="config-intrazone-nics-selected-device2" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="2">
+				<label for="config-intrazone-nics-selected-device2">Second FortiGate</label>
+			</div>
 
 			<table id="config-intrazone-nics-first">
 				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
@@ -475,61 +477,126 @@
 			</script>
 		</div>
 
-		<h2>&#8227; Create new VM (EC2 instance)</h2>
+		<h2>Create new VM (EC2 instance)</h2>
 		<div name="indent1">
-			<input type="radio" id="config-intrazone-ec2-selected-device1" name="config-intrazone-ec2-selected-device" data-type="deviceSelector" value="1" checked>
-			<label for="config-intrazone-ec2-selected-device1">First FortiGate</label>
-			<input type="radio" id="config-intrazone-ec2-selected-device2" name="config-intrazone-ec2-selected-device" data-type="deviceSelector" value="2">
-			<label for="config-intrazone-ec2-selected-device2">Second FortiGate</label>
-
-			<p>Important stuff to specify:
 			<ul>
-			<li>Specify the <a href="javascript:$('#dialog-iam-role-unicast-ha').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}})">right IAM role</a>
-			    with privileges to update networking configuration of EC2 instances.  In Fortinet EMEA TAC account the role name is "FortiOS_unicast_HA".
-			</li>
-			<li>Select the right VPC name and because AWS will create port1, select the subnet "external".</li>
+			<li>In EC2 AWS console launch a new instance and in "AWS Marketplace" section find FortiGate. There are two types of images available:
+				<ul>
+				<li><b>PAYG</b> : No explicit VM license is needed but the price is higher by the fee paid to Fortinet for using the FortiGate VM.
+				                  With this image the pre-configuration bellow works perfectly because all features are available right after boot.</li>
+				<li><b>BYOL</b> : When VM of this type boots up, not all features are configurable until user uploads the valid FortiGate VM license.
+				                  This causes a small issue with pre-configuration bellow because "config system ha" and "config firewall policy"
+				                  sections must be manually re-configured (copy &amp; paste is ok) after the license is uploaded and validated.</li>
+				</ul></li>
+			<li>At the instance size select "t3.xlarge". <span class="note">(At least four network interfaces are needed which means the instance must
+			    have at least four CPUs.)</span>
+			<li>On the "Instance details" configuration page select:
+				<ul>
+					<li><b>Network</b> : The VPC you created in the first section of this guide.</li>
+					<li><b>Subnet</b> : The external subnet you created before. AWS will use this as port1 FortiGate interface.</li>
+					<li><b>IAM role</b> : "FortiOS_unicast_HA" - this is the role pre-created in the Fortinet EMEA TAC account. If you are deploying this in another account, 
+					                      <a href="javascript:$('#dialog-iam-role-unicast-ha').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}})">
+					                      the right IAM role</a> must be created in advance.</li>
+					<li><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary IP addresses based on the following table:
+						<br/><br/>
+						<div name="select-device">
+							<input type="radio" id="config-intrazone-ec2eth0-selected-device1" name="config-intrazone-ec2eth0-selected-device" data-type="deviceSelector" value="1" checked>
+							<label for="config-intrazone-ec2eth0-selected-device1">First FortiGate</label>
+							<input type="radio" id="config-intrazone-ec2eth0-selected-device2" name="config-intrazone-ec2eth0-selected-device" data-type="deviceSelector" value="2">
+							<label for="config-intrazone-ec2eth0-selected-device2">Second FortiGate</label>
+						</div>
+
+						<table id="config-intrazone-ec2-first">
+							<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
+							<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
+							<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+						</table>
+
+						<script>
+							original = $('#config-intrazone-ec2-first');
+							clone = original.clone();
+							clone.attr("id", "config-intrazone-ec2-second");
+							clone.insertAfter(original);
+						</script>
+					</li>
+					<li><b>User data</b> : Content of this field is the configuration that is automatically merged when the FortiGate boots up for the first time.
+					                       Use the following table to generate the right configuration:
+						<br/><br/>
+
+						<div name="select-device">
+							<input type="radio" id="config-intrazone-ec2userdata-selected-device1" name="config-intrazone-ec2userdata-selected-device" data-type="deviceSelector" value="1" checked>
+							<label for="config-intrazone-ec2userdata-selected-device1">First FortiGate</label>
+							<input type="radio" id="config-intrazone-ec2userdata-selected-device2" name="config-intrazone-ec2userdata-selected-device" data-type="deviceSelector" value="2">
+							<label for="config-intrazone-ec2userdata-selected-device2">Second FortiGate</label>
+						</div>
+
+						<table id="config-intrazone-fgt-first">
+							<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt1"/></td><tr>
+							<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
+							<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
+							<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
+							<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
+							<tr><td>Create IPSec VPN responder configuration:</td><td><input type="checkbox" name="ipsec" checked/></td><tr>
+							<tr><td>IPSec preshared secret:</td><td><input type="text" name="ipsec-psk" value="FortiAws99!"/></td><tr>
+							<tr><td>IPSec XAUTH "client" password:</td><td><input type="text" name="ipsec-client-password" value="client"/></td><tr>
+					
+							<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
+					
+							<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
+						</table>
+			
+						<script>
+							original = $('#config-intrazone-fgt-first');
+							clone = original.clone();
+							clone.attr("id", "config-intrazone-fgt-second");
+							clone.find('input[type=text][name=hostname]').val("awsfgt2");
+							clone.find('input[type=text][name=ha-priority]').val("100");
+							clone.insertAfter(original);
+						</script>
+					</li>
+				</ul></li>
+				<li>Finish the deployment wizzard and keep monitoring the state of the new instance. As soon as it changes from "Pending" to "Running" navigate to EC2 "Network interfaces" section
+				    and attach the pre-created interfaces port2, port3 and port4 respectively. <span class="note">(Be aware that this must be done fast enough to be finished before the
+				    VM finishes booting, otherwise the configuration will fail dues to the missing interfaces.)</span></li>
+				<li>Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate").
 			</ul>
 
-			<table id="config-intrazone-ec2-first">
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
-				<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
-				<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
-			</table>
-
-			<table id="config-intrazone-ec2-second">
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
-				<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
-				<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
-			</table>
-
-			<h3>User data (preload configuration)</h3>
-			<p>Make sure that the IP fields above are filled correctly or it will not work!</p>
-
-			<table id="config-intrazone-fgt-first">
-				<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt1"/></td><tr>
-				<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
-				<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
-				<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
-				<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
-				<tr><td>Create IPSec VPN responder configuration:</td><td><input type="checkbox" name="ipsec" checked/></td><tr>
-				<tr><td>IPSec preshared secret:</td><td><input type="text" name="ipsec-psk" value="FortiAws99!"/></td><tr>
-				<tr><td>IPSec XAUTH "client" password:</td><td><input type="text" name="ipsec-client-password" value="client"/></td><tr>
-		
-				<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
-		
-				<tr><td colspan="2"><input type="button" name="generate" value="Generate config script"/></td></tr>
-			</table>
-
-			<script>
-				original = $('#config-intrazone-fgt-first');
-				clone = original.clone();
-				clone.attr("id", "config-intrazone-fgt-second");
-				clone.find('input[type=text][name=hostname]').val("awsfgt2");
-				clone.find('input[type=text][name=ha-priority]').val("100");
-				clone.insertAfter(original);
-			</script>
 
 		</div>
+
+		<h2>Finish the VPC configuration</h2>
+		<div name="indent1">
+			<ul>
+			<li>Associate the <b>shared</b> public IP to the port1 interface of the master FortiGate <span class="note">(that should be the first one)</span>.
+			    When selecting private IP to associate it to, make sure to select the secondary IP and not the primary. <span class="note">(Because the
+			    FortiGate has only the secondary IP from AWS configuration configured as primary.)</li>
+			<li>In the routing table bound to "internal" subnet, create new default route "0.0.0.0/0" with the "target" set to network interface port2
+			    of the current master FortiGate  <span class="note">(that should be the first one)</span>.</li>
+			<li>Associate the two dedicated <b>mgmt</b> public IPs to port4 of each FortiGate.</li>
+			</ul>
+		</div>
+
+		<h2>Test</h2>
+		<div name="indent1">
+			<ul>
+			<li>It should be possible to ping &amp; SSH to the master FortiGate using the <b>shared</b> public IP.</li>
+			<li>It should be possible to ping &amp; SSH to the both FortiGates using the right <b>mgmt</b> public IP.</li>
+			</ul>
+			<p><span class="note">Note: If BYOL image was used, now it is necessary to SSH to master and slave FortiGates using the dedicated
+			   management addresses and copy &amp; paste the "config firewall policy" and "config system ha" sections from
+			   the original config file.</span></p>
+			<ul>
+			<li>It should be possible to connect as "client" user to the aggresive mode IPSec responder listening on the
+			    <b>shared</b> public IP.</li>
+			<li>Any additional device running in the "internal" subnet should access Internet through port2 of the master
+			    FortiGate device. Using the IPSec connection it should also be possible to connect to this device from outside.</li>
+			<li>After HA failover <span class="note">(that can be triggered either by rebooting the current master or by simply
+			    changing its HA priority with "override" enabled)</span> the <b>shared</b> public IP, port1 and port2 secondary IPs in AWS,
+			    and "internal" subnet default route should be moved to the new master FortiGate.
+				 <span class="note">Debug "diagnose debug application awsd -1" can be really helpful when troubleshooting a problem here.</span>
+			</ul>
+		</div>
+
 	</div>
 	</div>
 

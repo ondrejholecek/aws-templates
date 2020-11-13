@@ -14,6 +14,11 @@ h1:first-child {
 	padding-top: 1em;
 }
 
+h2::before {
+	content: "\2023";
+	padding-right: 0.3em;
+}
+
 h3 {
 	display: inline;
 	border-bottom: 1px dashed #008b10;
@@ -52,6 +57,10 @@ ul li {
 
 ul li b {
 	color: #008b10;
+}
+
+div[name=select-device] {
+	padding-bottom: 0.5em;
 }
 
 input[type=button] {
