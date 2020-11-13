@@ -167,6 +167,9 @@
 			}
 
 			// ha
+			let haIp   = IPv4_string_to_number(port4Ip);
+			let haMask = IPv4_cidr_to_number(port4Mask);
+			let haDgw  = IPv4_number_to_string((haIp&haMask)+1);
 			config += 'config system ha\n';
 			config += '    set group-name "fgtha"\n';
 			config += '    set mode a-p\n';
@@ -176,6 +179,7 @@
 			config += '    config ha-mgmt-interfaces\n';
 			config += '        edit 0\n';
 			config += '            set interface "port4"\n';
+			config += '            set gateway ' + haDgw + "\n";
 			config += '        next\n';
 			config += '    end\n';
 			config += '    set override enable\n';
@@ -358,7 +362,7 @@
 			<li>The VPC IP range does not matter and you can keep the default one unless you plan to interconnect
 			    different VPCs in the future.</li>
 			<li>Create four new subnets in the VPC using the IP range configuration from the table bellow.
-			    Make sure you explicitly select the same "Availablity zone" for each newly created subnet.
+			    Make sure you explicitly select the same "Availability zone" for each newly created subnet.
 			    <span class="note">(Otherwise you won't be able to attach the interface to VM later.)</span></li>
 			</ul>
 	
@@ -371,26 +375,33 @@
 				<tr><td>Management subnet:</td><td><input type="text" name="mgmtNetwork" value=""/> / <input type="text" name="mgmtMask" value="24" size="2"/></td><tr>
 			</table><br/>
 	
-			<h3>Create Internet gateway and attach it to VPC.</h3>
+			<h3>Create new Internet gateway</h3>
+			<ul>
+			<li>Attach it to your VPC.</li>
+			</ul>
 			<p><span class="note">This will allow future public IPs to be reachable correctly.</span></p>
 	
-			<h3>Create new routing table and attach it to external subnet.</h3>
+			<h3>Create new "external" route table</h3>
 			<ul>
-			<li>In the routing table create new route with destination "0.0.0.0/0" routed via the previously created Internet gateway.
+			<li>Associate it to "external" subnet.</li>
+			<li>In the route table create new route with destination "0.0.0.0/0" and as the target use the previously created Internet gateway.
 			    <span class="note">(This is necessary for the shared public IP that will be attached later.)</span></li>
 			</ul>
 	
-			<h3>Create new routing table and attach it to management subnet.</h3>
+			<h3>Create new "management" route table</h3>
 			<ul>
-			<li>In the routing table create new route with destination "0.0.0.0/0" routed via the previously created Internet gateway.
+			<li>Associate it to "management" subnet.</li>
+			<li>In the route table create new route with destination "0.0.0.0/0" and as the target use the previously created Internet gateway.
 			    <span class="note">(This is necessary for the dedicated management public IP that will be attached later.)</span></li>
 			</ul>
 	
-			<h3>Create new routing table and attach it to internal subnet.</h3>
-			<p><span class="note">Default route via port2 of master FortiGate device will be added later when the first
-			   FortiGate VM is deployed.</span></p>
+			<h3>Create new "internal" route table</h3>
+			<ul>
+			<li>Associate it to "internal" subnet.</li>
+			</ul>
+			<p><span class="note">Default route via port2 of master FortiGate device will be added later when the first FortiGate VM is deployed.</span></p>
 	
-			<h3>Create three new public (elastic) IP addresses.</h3>
+			<h3>Create three new public (elastic) IP addresses</h3>
 
 			<ul>
 			<li><b>shared</b> : Floating IP always pointing to actual master's port1 ("external") interface.
@@ -399,6 +410,16 @@
 			</ul>
 
 			<p><span class="note">At this moment there are no VMs to attach the public IP to, so this fill be finished later.</span></p>
+
+			<h3>Create new security group</h3>
+			<ul>
+			<li>This will be policy allowing all traffic to and from the FortiGates without any filtering in AWS.
+			    <span class="note">(FortiGate is hardened security device so this shouldn't be an issue.)</span></li>
+			<li>Make sure the right VPC is selected in new security group dialog.</li>
+			<li>In <b>Inbound rules</b> section add a new rule and allow "All traffic" with "Anywhere" as source.</li>
+			<li>Validate that in <b>Outbound rules</b> section the same rule already exists.</li>
+			</ul>
+
 		</div>
 
 		<h2>Create additional network interfaces</h2>
@@ -409,10 +430,12 @@
 
 			<ul>
 			<li>In EC2 AWS console create three interfaces for first FortiGate device and another three for the second FortiGate device.
-			    <span class="note">(It is wise to use tag "Name" with identification of FortiGate device and port name to find it later easily.)</span></li>
-			<li>Attach each interface to the right network subnet.</li>
-			<li>For port2 specify both primary and secondary IP addresses.</li>
-			<li>For port3 and port4 specify only primary IP address.</li>
+			    <span class="note">(It is wise to use tag "Name" with identification of FortiGate device and its port name to find it later easily.)</span></li>
+			<li>Attach each interface to the right network <b>subnet</b>. <span class="note">(Use the table bellow.)</span></li>
+			<li>Select "Custom" <b>IPv4 Private IP</b> and specify the right primary IP address. <span class="note">(Use the table bellow.)</span></li>
+			<li>As the <b>security group</b> select the one you created in previous section.</li>
+			<li>When port2 interface for first FortiGate device is created, right click on it, select <b>Manage IP Addresses</b> and add the secondary IP addresses.
+			    <span class="note">(Use the table bellow.) (Be aware that this is done only for the first FortiGate device which will start as the master.)</span></li>
 			</ul>
 
 			<div data-generate="switch-device"></div>
@@ -447,7 +470,8 @@
 					<li><b>IAM role</b> : "FortiOS_unicast_HA" - this is the role pre-created in the Fortinet EMEA TAC account. If you are deploying this in another account, 
 					    <a href="javascript:$('#dialog-iam-role-unicast-ha').trigger('openDialog')">
 					    the right IAM role</a> must be created in advance.</li>
-					<li><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary IP addresses based on the following table:
+					<li><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary (only for first "master" FortiGate) IP addresses
+					       based on the following table:
 						<br/><br/>
 						<div data-generate="switch-device"></div>
 						<table id="config-intrazone-ec2-first" data-clone="config-intrazone-ec2-second" data-switch="device-specific">
@@ -479,10 +503,12 @@
 						</table>
 					</li>
 				</ul></li>
-				<li>Finish the deployment wizzard and keep monitoring the state of the new instance. As soon as it changes from "Pending" to "Running" navigate to EC2 "Network interfaces" section
+				<li>Finish the deployment wizzard. When asked to select the <b>security group</b>, select again the one you created in previous section.</li>
+				<li>Keep monitoring the state of the new instance. As soon as it changes from "Pending" to "Running", navigate to EC2 "Network interfaces" section
 				    and attach the pre-created interfaces port2, port3 and port4 respectively. <span class="note">(Be aware that this must be done fast enough to be finished before the
-				    VM finishes booting, otherwise the configuration will fail dues to the missing interfaces.)</span></li>
-				<li>Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate").
+				    VM finishes booting, otherwise the configuration will fail due to the missing interfaces.) (Make sure you attach the right interfaces in the right order to the right device.)</span></li>
+				<li>It is wise to change the interface name for the new port1 interface created by AWS during the deployment to conform with names of other interfaces you created manually.</li>
+				<li>Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate"), but do not specify the secondary IP address for second ("slave") FortiGate.
 			</ul>
 
 
@@ -491,17 +517,18 @@
 		<h2>Finish the VPC configuration</h2>
 		<div name="indent1">
 			<ul>
-			<li>Associate the <b>shared</b> public IP to the port1 interface of the master FortiGate <span class="note">(that should be the first one)</span>.
-			    When selecting private IP to associate it to, make sure to select the secondary IP and not the primary. <span class="note">(Because the
-			    FortiGate has only the secondary IP from AWS configuration configured as primary.)</li>
-			<li>In the routing table bound to "internal" subnet, create new default route "0.0.0.0/0" with the "target" set to network interface port2
+			<li>Associate the <b>shared</b> public IP to the <b>Resource type</b> "Network interface" and select secondary IP of port1 interface of the master FortiGate <span class="note">(that should be the first one)</span>.
+			    <span class="note">(Because the FortiGate has only the secondary IP from AWS configuration configured as primary.)</li>
+			<li>In the similar way associate the other two dedicated <b>mgmt</b> public IPs to port4 of each FortiGate.</li>
+			<li>In the route table attached to "internal" subnet, create new default route "0.0.0.0/0" with <b>target</b> set to network interface port2
 			    of the current master FortiGate  <span class="note">(that should be the first one)</span>.</li>
-			<li>Associate the two dedicated <b>mgmt</b> public IPs to port4 of each FortiGate.</li>
 			</ul>
 		</div>
 
 		<h2>Test</h2>
 		<div name="indent1">
+			<span class="note">Be aware that FortiGate will reboot during the initial deployment and then again when it validates the license.</span>
+
 			<ul>
 			<li>It should be possible to ping &amp; SSH to the master FortiGate using the <b>shared</b> public IP.</li>
 			<li>It should be possible to ping &amp; SSH to the both FortiGates using the right <b>mgmt</b> public IP.</li>
@@ -510,6 +537,8 @@
 			   management addresses and copy &amp; paste the "config firewall policy" and "config system ha" sections from
 			   the original config file.</span></p>
 			<ul>
+			<li>HA status should show both FortiGate and the cluster checksum should match.
+			    <span class="note">(Synchronizing the configuration can however take few minutes.)</span></li>
 			<li>It should be possible to connect as "client" user to the aggresive mode IPSec responder listening on the
 			    <b>shared</b> public IP.</li>
 			<li>Any additional device running in the "internal" subnet should access Internet through port2 of the master
