@@ -5,9 +5,11 @@
 
 	<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
 	<script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
+
 	<script src="networks.js"></script>
 	<script src="cloning.js"></script>
 	<script src="switch_device.js"></script>
+	<script src="depends.js"></script>
 
 	<link rel="stylesheet" href="document.css"/>
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/smoothness/jquery-ui.css"/>
@@ -15,36 +17,6 @@
 	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
 	<script>
-		var configuring_device = 1;
-
-		function switch_device() {
-			configuring_device = $(this).val();
-
-			if (configuring_device == 1) {
-				$('#config-intrazone-nics-second').hide()
-				$('#config-intrazone-nics-first').show()
-				$('#config-intrazone-ec2-second').hide()
-				$('#config-intrazone-ec2-first').show()
-				$('#config-intrazone-fgt-second').hide()
-				$('#config-intrazone-fgt-first').show()
-			} else {
-				$('#config-intrazone-nics-first').hide()
-				$('#config-intrazone-nics-second').show()
-				$('#config-intrazone-ec2-first').hide()
-				$('#config-intrazone-ec2-second').show()
-				$('#config-intrazone-fgt-first').hide()
-				$('#config-intrazone-fgt-second').show()
-			}
-
-			$('input[data-type=deviceSelector]').each(function(index, element) {
-				if ($(element).val() == configuring_device) {
-					$(element).prop("checked", true);
-				} else {
-					$(element).prop("checked", false);
-				}
-			});
-		}
-
 		function generate_vpc_config() {
 			let ip   = IPv4_string_to_number($('#config-intrazone-vpc input[type=text][name=vpcNetwork]').val());
 			let mask = IPv4_cidr_to_number($('#config-intrazone-vpc input[type=text][name=vpcMask]').val());
@@ -104,13 +76,7 @@
 		function generate_intrazone_config() {
 			let config = "";
 
-			// this is used for selectors where we need to use the right one
-			let thisDeviceSuffix  = "first";
-			let otherDeviceSuffix = "second";
-			if (configuring_device == 2) {
-				thisDeviceSuffix  = "second";
-				otherDeviceSuffix = "first";
-			}
+			let [thisDeviceSuffix, otherDeviceSuffix] = switch_device_current_suffix();
 
 			// get values and check for errors
 			let hostname      = $('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=text][name=hostname]').val();
@@ -129,7 +95,6 @@
 			let haPriority = $('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=text][name=ha-priority]').val();
 			let haPeer     =  $('#config-intrazone-nics-'+otherDeviceSuffix+' input[type=text][name=port3PrimaryIp]').val();
 
-
 			let errors = "";
 			if (port1Ip.length == 0 || port1Ip == "0.0.0.0") errors += "- Port1 secondary IP address missing.\n";
 			if (port2Ip.length == 0 || port2Ip == "0.0.0.0") errors += "- Port2 secondary IP address missing.\n";
@@ -141,7 +106,6 @@
 				alert(errors);
 				return false;
 			}
-
 
 			// global settings
 			config += 'config system global\n';
@@ -312,34 +276,22 @@
 			generate_intrazone_config();
 		}
 
-		function switch_section_ipsec(e) {
-			if ($(e.target).is(':checked')) {
-				$('#config-intrazone-fgt-first input[name=ipsec-psk]').parents('tr').first().show(500);
-				$('#config-intrazone-fgt-first input[name=ipsec-client-password]').parents('tr').first().show(500);
-			} else {
-				$('#config-intrazone-fgt-first input[name=ipsec-psk]').parents('tr').first().hide(500);
-				$('#config-intrazone-fgt-first input[name=ipsec-client-password]').parents('tr').first().hide(500);
-			}
-		}
-
 		function onload() {
 			cloning_setup();
 			switch_device_setup();
+			depends_setup();
 
 			$('#config-intrazone-vpc  input[type=button][name=generate]').click(generate_vpc_config);
 			$('#config-intrazone-nics-first  input[type=button][name=generate]').click(generate_nics_config);
 			$('#config-intrazone-nics-second input[type=button][name=generate]').click(generate_nics_config);
 			$('#config-intrazone-ec2-first  input[type=button][name=generate]').click(generate_nics_config);
 			$('#config-intrazone-ec2-second input[type=button][name=generate]').click(generate_nics_config);
-			$('input[data-type=deviceSelector]').change(switch_device);
 			$('#config-intrazone-fgt-first  input[type=button][name=generate]').click(function() {
 				generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});
 			});
 			$('#config-intrazone-fgt-second input[type=button][name=generate]').click(function() {
 				generate_intrazone_config() && $('#dialog-userdata').dialog({resizable: false, modal: true, height:'auto', width:'auto', position: {my: 'center', at: 'center', of: window}});
 			});
-
-			$('#config-intrazone-fgt-first input[type=checkbox][name=ipsec]').change(switch_section_ipsec);
 		}
 	</script>
 </head>
@@ -492,7 +444,7 @@
 					<li><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary IP addresses based on the following table:
 						<br/><br/>
 						<div data-generate="switch-device"></div>
-						<table id="config-intrazone-ec2-first" data-clone="config-intrazone-ec2-second">
+						<table id="config-intrazone-ec2-first" data-clone="config-intrazone-ec2-second" data-switch="device-specific">
 							<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
 							<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
 							<tr><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
@@ -504,15 +456,16 @@
 
 						<div data-generate="switch-device"></div>
 						<table id="config-intrazone-fgt-first" data-clone="config-intrazone-fgt-second"
-						                                       data-set="ha-priority:100;hostname:awsfgt2">
+						                                       data-set="ha-priority:100;hostname:awsfgt2"
+						                                       data-switch="device-specific">
 							<tr><td>Hostname:</td><td><input type="text" name="hostname" value="awsfgt1"/></td><tr>
 							<tr><td>Admin timeout:</td><td><input type="text" name="admintimeout" value="480"/></td><tr>
 							<tr><td>Timezone:</td><td><input type="text" name="timezone" value="27"/></td><tr>
 							<tr><td>Create default firewall policy from port2 to port1:</td><td><input type="checkbox" name="policy-default" checked/></td><tr>
 							<tr><td>Create default route through port1:</td><td><input type="checkbox" name="default-route-port1" checked/></td><tr>
 							<tr><td>Create IPSec VPN responder configuration:</td><td><input type="checkbox" name="ipsec" checked/></td><tr>
-							<tr><td>IPSec preshared secret:</td><td><input type="text" name="ipsec-psk" value="FortiAws99!"/></td><tr>
-							<tr><td>IPSec XAUTH "client" password:</td><td><input type="text" name="ipsec-client-password" value="client"/></td><tr>
+							<tr><td>IPSec preshared secret:</td><td><input type="text" name="ipsec-psk" value="FortiAws99!" data-depends="ipsec"/></td><tr>
+							<tr><td>IPSec XAUTH "client" password:</td><td><input type="text" name="ipsec-client-password" value="client" data-depends="ipsec"/></td><tr>
 					
 							<tr><td>HA priority:</td><td><input type="text" name="ha-priority" value="200"/></td><tr>
 					
