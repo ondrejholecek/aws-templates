@@ -10,7 +10,7 @@
 	<link rel="stylesheet" href="document.css"/>
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/smoothness/jquery-ui.css"/>
 	<link rel="preconnect" href="https://fonts.gstatic.com">
-	<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&family=Roboto:wght@300&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
 	<script>
 		var configuring_device = 1;
@@ -342,12 +342,62 @@
 	<div id="main-content">
 	<h1>FortiGate native same-zone A-P HA in AWS</h1>
 
+	<h2>&#8227; Design</h2>
+
+	<div name="indent1">
+
+		<p>Be aware that FortiGate in AWS will automatically recognize the HA setup within the same availability
+	   zone and adjust its HA failover behavior. The principles shown on this page may not work correctly with
+		multi-zone HA configuration.</p>
+
+		<h3>Expected layout</h3>
+		<ul>
+		<li><b>port1</b> : External ("public") interface that is connected to Internet by assigning floating public IP address in AWS. 
+		<li><b>port2</b> : Internal interface connected to the private network built in AWS. All traffic to and from this network
+		                   needs to pass through FortiGate, which is achived by configuring the routing table bound to this subnet in AWS
+		                   with default route via the port2 interface of FortiGate.</li>
+		<li><b>port3</b> : Dedicated HA heartbeat interface.</li>
+		<li><b>port4</b> : Dedicated management interface. It is not strictly necessary but it allows to connect directly to either device
+		                   device in the cluster, even if the AWS failover failed for any reason. It expects two additional public ("elastic")
+		                   IP addresses, each attached to different FortiGate in the cluster.</li>
+		</ul>
+	
+		<h3>Basic principles</h3>
+		<ul>
+		<li>To be able to attach at least 4 network interfaces, the instance ("VM") size in AWS must contain at least 4 CPU.
+		    Smalles usable size in this case is "t3.xlarge".</li>
+		<li>Network interfaces in AWS matching port1 and port2 interfaces on FortiGate must be configured with primary and secondary
+		    address. However, in FortiGate config file the AWS primary address is not used at all and there isn't any secondary IP
+			 configuration enabled.
+			 Both interfaces are statically configured with "set ip ..." using the secondary address from AWS configuration.</li>
+		<li>FortiGate configuration in the cluster is fully synchronized, including the network interfaces and routing sections.
+		    This is possible because the IP addresses configured on port1 and port2 are "floating" in AWS configuration.</li>
+		<li>It is not simply possible to test port3 and port4 configuration by pinging because each of these two interfaces
+		    is automatically placed to dedicated hidden VDOM when HA is enabled.</li>
+		<li>Unlike FortiGate deployment in Azure, in AWS there is no SDN connector configuration needed (nor available) to support
+		    HA failover.</li>
+		<li>After HA failover the new master FortiGate device:
+			<ul>
+			<li>Moves the secondary IPs configured on port1 and port2 in AWS to the respective interfaces of the new master device.</li>
+			<li>Re-assigns the "floating" public IP to the port1 of the new master device.</li>
+			<li>Re-assigns the default route in subnet connected to port2 via port2 interface of the new master device.</li>
+			</ul>
+		</li>
+		</ul>
+	</div>
+
 	<div name="manual-intrazone-step-vpc">
 		<h2>&#8227; Create VPC configuration</h2>
 		<div name="indent1">
-			<h3 class="step">Create VPC with specified IP range and 4 subnets with IP ranges from the VPC range.</h3>
+			<h3>Create VPC with specified IP range and 4 subnets with IP ranges from the VPC range.</h3>
 	
-			<p>Make sure you explicitly select the same "Availablity zone" when creating the subnets.</p>
+			<ul>
+			<li>The VPC IP range does not matter and you can keep the default one unless you plan to interconnect
+			    different VPCs in the future.</li>
+			<li>Create four new subnets in the VPC using the IP range configuration from the table bellow.
+			    Make sure you explicitly select the same "Availablity zone" for each newly created subnet.
+			    <span class="note">(Otherwise you won't be able to attach the interface to VM later.)</span></li>
+			</ul>
 	
 			<table id="config-intrazone-vpc">
 				<tr><td>VPC address range:</td><td><input type="text" name="vpcNetwork" value="10.0.0.0"/> / <input type="text" name="vpcMask" value="16" readonly size="2"/></td><tr>
@@ -358,40 +408,54 @@
 				<tr><td>Management subnet:</td><td><input type="text" name="mgmtNetwork" value=""/> / <input type="text" name="mgmtMask" value="24" size="2"/></td><tr>
 			</table><br/>
 	
-			<h3 class="step">Create Internet gateway and attach it to VPC.</h3>
-			<p class="note">This will allow future public IPs to be reachable correctly.</p>
+			<h3>Create Internet gateway and attach it to VPC.</h3>
+			<p><span class="note">This will allow future public IPs to be reachable correctly.</span></p>
 	
-			<h3 class="step">Create new routing table and attach it to external subnet.</h3>
-			<p>In the routing table create new with destination "0.0.0.0/0" routed via VPC Internet gateway.</p>
-			<p class="note">This is necessary for the shared public IP that will be attached later.</p>
+			<h3>Create new routing table and attach it to external subnet.</h3>
+			<ul>
+			<li>In the routing table create new route with destination "0.0.0.0/0" routed via the previously created Internet gateway.
+			    <span class="note">(This is necessary for the shared public IP that will be attached later.)</span></li>
+			</ul>
 	
-			<h3 class="step">Create new routing table and attach it to management subnet.</h3>
-			<p>In the routing table create new with destination "0.0.0.0/0" routed via VPC Internet gateway.</p>
-			<p class="note">This is necessary for the management public IP that will be attached later.</p>
+			<h3>Create new routing table and attach it to management subnet.</h3>
+			<ul>
+			<li>In the routing table create new route with destination "0.0.0.0/0" routed via the previously created Internet gateway.
+			    <span class="note">(This is necessary for the dedicated management public IP that will be attached later.)</span></li>
+			</ul>
 	
-			<h3 class="step">Create 3 new Elastic (public) IP addresses.</h3>
-			<p>Create but do not attach them yet.</p>
-			<ol>
-			<li>Shared by FortiGates and always pointing to actual master's port1 ("external") interface.
-			<li>First FortiGate management always pointing to its port4 ("management") interface.
-			<li>Second FortiGate management always pointing to its port4 ("management") interface.
-			</ol>
+			<h3>Create new routing table and attach it to internal subnet.</h3>
+			<p><span class="note">Default route via port2 of master FortiGate device will be added later when the first
+			   FortiGate VM is deployed.</span></p>
+	
+			<h3>Create three new public (elastic) IP addresses.</h3>
+
+			<ul>
+			<li><b>shared</b> : Floating IP always pointing to actual master's port1 ("external") interface.
+			<li><b>mgmt1</b>  : First FortiGate management always pointing to its port4 ("management") interface.
+			<li><b>mgmt2</b>  : Second FortiGate management always pointing to its port4 ("management") interface.
+			</ul>
+
+			<p><span class="note">At this moment there are no VMs to attach the public IP to, so this fill be finished later.</span></p>
 		</div>
 
 		<h2>&#8227; Create additional network interfaces</h2>
 		<div name="indent1">
+			<p><span class="note">In AWS maximum of two network interfaces can be specified when deploying new VM (instance). Because we need four of them,
+			                      we will create port2, port3 and port4 AWS interfaces manually and let AWS deployment wizzard to create only port1.
+			                      Then immediately when the VM (instance) is created we will quickly attach the other three interfaces.</span></p>
+
+			<ul>
+			<li>In EC2 AWS console create three interfaces for first FortiGate device and another three for the second FortiGate device.
+			    <span class="note">(It is wise to use tag "Name" with identification of FortiGate device and port name to find it later easily.)</span></li>
+			<li>Attach each interface to the right network subnet.</li>
+			<li>For port2 specify both primary and secondary IP addresses.</li>
+			<li>For port3 and port4 specify only primary IP address.</li>
+			</ul>
+
 			<input type="radio" id="config-intrazone-nics-selected-device1" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="1" checked>
 			<label for="config-intrazone-nics-selected-device1">First FortiGate</label>
 			<input type="radio" id="config-intrazone-nics-selected-device2" name="config-intrazone-nics-selected-device" data-type="deviceSelector" value="2">
 			<label for="config-intrazone-nics-selected-device2">Second FortiGate</label>
-
-			<p class="note">This is necessary because when deploying new VM via AWS console,
-			                max 2 NICs can be specified but we need 4.
-			</p>
-			<p class="note">We explicitly create NICs for port2, port3 and port4. Interface port1
-			                will be created later by AWS when deploying the VM. Its value is shown
-			                here just for overview.
-			</p>
 
 			<table id="config-intrazone-nics-first">
 				<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets"/></td></tr>
