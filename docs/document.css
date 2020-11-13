@@ -1,0 +1,108 @@
+body {
+	font-family: 'Roboto', sans-serif;
+	margin-top: 0px;
+	margin-bottom: 0px;
+	background: lightgrey;
+}
+
+h1, h2, h3 {
+	color: #008b10;
+}
+
+h1:first-child {
+	font-size: 2.3em;
+	padding-top: 1em;
+}
+
+#main-content {
+	display: table;
+	background: #eef1f5;
+	padding-left: 5em;
+	padding-right: 5em;
+	padding-bottom: 2em;
+	border-left: 2px dotted #008b10;
+	border-right: 2px dotted #008b10;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+input[type=button] {
+	width: 100%;
+}
+
+h3.step {
+	display: inline;
+	border-bottom: 1px dashed #008b10;
+	font-size: 1.1em;
+}
+
+p.note {
+	font-style: italic;
+	font-size: 0.8em;
+}
+
+div[name=indent1] {
+	padding-left: 3em;
+}
+
+table#config-intrazone-nics-second, table#config-intrazone-ec2-second, table#config-intrazone-fgt-second {
+	display: none;
+}
+
+
+tr.disabled td {
+	color: lightgrey;
+}
+
+tr.disabled td input {
+	color: inherit;
+}
+
+ul {
+	max-width: 40em;
+}
+
+p {
+	max-width: 40em;
+}
+
+#dialog-userdata textarea[name=config] {
+	width: 30em;
+	height: 85vh;
+	border: 0px;
+	padding: 1em 1em 1em 1em;
+	outline: none;
+}
+
+#dialog-iam-role-unicast-ha, #dialog-userdata {
+	display: none;
+}
+
+.ui-dialog-titlebar {
+	background: #008b10 !important;
+	color: white !important;
+}
+
+.ui-dialog {
+	border: 2px solid #008b10 !important;
+}
+
+#static-buttons {
+	position: fixed;
+	top: 1em;
+	right: 1em;
+}
+
+#static-buttons fieldset {
+	border: 1px solid #008b10;
+}
+
+#static-buttons legend {
+	font-size: 1.2em;
+	font-weight: bold;
+	color: #008b10;
+	padding-left: 5px;	
+	padding-right: 5px;	
+	margin-bottom: 5px;
+}
+
