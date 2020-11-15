@@ -468,8 +468,10 @@
 			<li>In EC2 AWS console launch a new instance and in "AWS Marketplace" section find FortiGate. There are two types of images available:
 				<ul>
 				<li><b>PAYG</b> : No explicit VM license is needed but the price is higher by the fee paid to Fortinet for using the FortiGate VM.
+				                  Fortinet images of this type usually have nothing special in title but software fee is specified in the descripton.
 				                  The auto-configuration used in this guide always works correctly.
 				<li><b>BYOL</b> : When VM of this type boots up, not all features are configurable until user uploads the valid FortiGate VM license.
+				                  Fortinet images of this type usually have "(BYOL)" keyword in the title.
 				                  Based on experience, this guide usually works as right as for PAYG images, but if something hasn't auto-configured
 				                  correctly, check the configuration on FortiGate and copy &amp; paste missing sections if needed.
 				</ul></li>
