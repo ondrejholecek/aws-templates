@@ -208,6 +208,16 @@
 				config += '    next\n';
 				config += 'end\n';
 				config += '\n';
+				// firewall address for split tunneling
+				let internalIp   = IPv4_string_to_number(port2Ip);
+				let internalMask = IPv4_cidr_to_number(port2Mask);
+				let internalNet  = IPv4_number_to_string(internalIp&internalMask);
+				config += 'config firewall address\n';
+				config += '    edit "internal aws network"\n';
+				config += '        set subnet ' + internalNet + ' ' + IPv4_number_to_string(internalMask) + '\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
 				// phase 1
 				config += 'config vpn ipsec phase1-interface\n';
 				config += '    edit "clients"\n';
@@ -219,8 +229,9 @@
 				config += '        set localid "fgtaws"\n';
 				config += '        set xauthtype auto\n';
 				config += '        set authusrgrp "vpnclients"\n';
-				config += '        set ipv4-start-ip 169.254.111.2\n';
-				config += '        set ipv4-end-ip 169.254.111.254\n';
+				config += '        set ipv4-start-ip 100.100.100.2\n';
+				config += '        set ipv4-end-ip 100.100.100.254\n';
+				config += '        set ipv4-split-include "internal aws network"\n';
 				config += '        set psksecret "' + $('#config-intrazone-fgt-'+thisDeviceSuffix+' input[type=text][name=ipsec-psk]').val() + '"\n';
 				config += '    next\n';
 				config += 'end\n';
@@ -229,7 +240,6 @@
 				config += 'config vpn ipsec phase2-interface\n';
 				config += '    edit "clients"\n';
 				config += '        set phase1name "clients"\n';
-				config += '        set keepalive enable\n';
 				config += '    next\n';
 				config += 'end\n';
 				config += '\n';
