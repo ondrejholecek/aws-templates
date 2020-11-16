@@ -3,6 +3,7 @@ var switch_device_id = 1;
 function switch_device_setup() {
 	$('div[data-generate=switch-device]').each(function (index, element) {
 		let newElement = switch_device_generate();
+		newElement.attr("class", $(element).attr("class"));
 		$(element).replaceWith(newElement);
 		$('div#'+newElement.attr("id")).find("input[type=radio]").each(function (index, radio) {
 			$(radio).change(switch_device_change);
@@ -32,6 +33,18 @@ function switch_device_change() {
 		let e = $(element);
 		let eid = e.attr("id");
 
+		// validate the condition
+		// if it doesn't match do not change the visibility status
+		let condition = $(element).attr("data-switch-condition");
+		if (condition) {
+			let [name, value] = condition.split(":", 2);
+			let currentValue = $('input[type=radio][name=' + name + ']:checked').first();
+			if (currentValue.val() != value) {
+				return;
+			}
+		}
+
+		// 
 		if (eid.endsWith("-first")) {
 			if (device == 1) {
 				e.show();

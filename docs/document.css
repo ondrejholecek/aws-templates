@@ -1,3 +1,7 @@
+.apha-same-zone, .apha-multi-zone {
+	display: none;
+}
+
 body {
 	font-family: 'Roboto', sans-serif;
 	margin-top: 0px;
@@ -19,7 +23,7 @@ h1, h2, h3 {
 	color: #008b10;
 }
 
-h1:first-child {
+h1.first-title {
 	font-size: 2.3em;
 	padding-top: 1em;
 }
@@ -86,10 +90,9 @@ div[name=indent1] {
 	padding-left: 3em;
 }
 
-table#config-intrazone-nics-second, table#config-intrazone-ec2-second, table#config-intrazone-fgt-second {
+table[id$=-second] {
 	display: none;
 }
-
 
 tr.disabled td {
 	color: lightgrey;
@@ -152,3 +155,14 @@ button.ui-button {
 	margin-bottom: 5px;
 }
 
+#static-buttons fieldset {
+	margin-bottom: 1em;
+}
+
+#static-buttons fieldset[name=setup-type] div {
+	padding-bottom: 0.5em;
+}
+
+#static-buttons fieldset[name=setup-type] div:last-child {
+	padding-bottom: 0em;
+}
