@@ -162,6 +162,19 @@
 			config += 'end\n';
 			config += '\n';
 			
+			// exclude sync
+			if (setupType == "apha-multi-zone") {
+				config += 'config system vdom-exception\n';
+				config += '    edit 0\n';
+				config += '        set object system.interface\n';
+				config += '    next\n';
+				config += '    edit 0\n';
+				config += '        set object router.static\n';
+				config += '    next\n';
+				config += 'end\n';
+				config += '\n';
+			}
+
 			// interfaces
 			config += 'config system interface\n';
 			config += '    edit port1\n';
