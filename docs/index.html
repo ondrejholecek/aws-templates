@@ -703,7 +703,7 @@
 			    <span class="note">(that should be the first one)</span>.
 			    <span class="note">(Because the FortiGate has only the secondary IP from AWS configuration configured as primary.)</li>
 			<li class="apha-multi-zone">Associate the <b>shared</b> public IP to the <b>Resource type</b> "Network interface" and select primary IP of port1 interface of the master FortiGate.</li>
-			<li>In the similar way associate the other two dedicated <b>mgmt</b> public IPs to port4 of each FortiGate.</li>
+			<li>In the similar way associate the other two dedicated <b>mgmt</b> public IPs to primary IP on port4 of each FortiGate.</li>
 			<li>In the route table attached to "internal" subnet, create new default route "0.0.0.0/0" with <b>target</b> set to network interface port2
 			    of the current master FortiGate  <span class="note">(that should be the first one)</span>.</li>
 			</ul>
