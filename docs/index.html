@@ -476,9 +476,10 @@
 		<li class="apha-same-zone">FortiGate configuration in the cluster is fully synchronized, including the network interfaces
 		    and routing sections. This is possible because the IP addresses configured on port1 and port2 are "floating" in AWS
 		    configuration.</li>
-		<li class="apha-multi-zone">Network interfaces on master and slave devices are not synchronized because they live in their
-		    independent network subnets. This causes issues when source NAT or VIP is used, because such sessions cannot be
-		    synchronized after HA failover and need to be restarted.</li>
+		<li class="apha-multi-zone">Network interfaces on master and slave devices must not be synchronized because they live in
+		    their independent network subnets. <span class="note">(For that we need to create "config system vdom-exception" 
+		    configuration.)</span> This causes issues when source NAT or VIP is used, because such sessions cannot be synchronized
+		    after HA failover and need to be restarted.</li>
 		<li>While it is partially possible to use DHCP client for interfaces on FortiGate (except the heartbeat interface), it is
 		    not recommended because it can cause strange issues. It is better to configure all IP addresses statically.</li>
 		<li>It is not simply possible to test port3 and port4 configuration by pinging because each of these two interfaces
