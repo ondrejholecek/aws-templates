@@ -1,0 +1,569 @@
+{
+	"Description" : "Deploys two FortiGates with HA and one Linux client in the same AZ",
+	"Parameters" : {
+		"Username" : {
+			"Type" : "String",
+			"MinLength": "3",
+			"Description" : "Enter your LDAP username (text before the '@' of your email address)"
+		},
+		"VpcRange" : {
+			"Type" : "String",
+			"Default": "10.20.0.0",
+			"Description" : "Enter VPC IP range of the new VPC (/16 is used)"
+		},
+		"KeyPair" : {
+			"Type": "AWS::EC2::KeyPair::KeyName",
+			"Description" : "Enter the SSH keypair to use for logging in"
+		},
+		"Role" : {
+			"Type": "String",
+			"Description" : "Select IAM role you want to assign",
+			"AllowedValues": [ "FortiOS_unicast_HA", "FortiOS_bootstrapping", "FortiOS_SDN_connector", "FortiOS_generic" ]
+		},
+		"Zone" : {
+			"Type": "AWS::EC2::AvailabilityZone::Name",
+			"Description" : "Select Availability zone where to deploy both FortiGates"
+		},
+		"ImageFortiGate" : {
+			"Type": "AWS::EC2::Image::Id",
+			"Description" : "Region specific AMI-ID for FortiGate. Find them in 'EC2 >> Image s> >AMIs', filter for 'Public Images' with 'Owner: AWS Marketplace', 'AMI Name: ^FortiGate-VM64-AWS'."
+		},
+		"ImageClient" : {
+			"Type": "AWS::EC2::Image::Id",
+			"Description" : "Region specific AMI-ID for client VM (Linux is expected). Find them in 'EC2 >> Image s> >AMIs', filter for 'Public Images' with 'Owner: AWS Marketplace', 'AMI Name: ^debian-10-amd64'."
+		}
+	},
+	"Resources": {
+		"myVPC": {
+			"Type" : "AWS::EC2::VPC",
+			"Properties" : {
+				"CidrBlock" : { "Fn::Join": ["", [{ "Ref": "VpcRange" }, "/16"]] },
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "vpc" ]] } }]
+			}
+		},
+		"securityGroupAllowAll" : {
+		  "Type" : "AWS::EC2::SecurityGroup",
+		  "Properties" : {
+				"GroupDescription" : "allow all traffic",
+				"GroupName" : "allowall",
+				"SecurityGroupIngress" : [{
+					"IpProtocol" : "-1",
+					"CidrIp" : "0.0.0.0/0"
+				}],
+				"SecurityGroupEgress" : [{
+					"IpProtocol" : "-1",
+					"CidrIp" : "0.0.0.0/0"
+				}],
+				"VpcId" : { "Ref" : "myVPC" }
+			 }
+		},
+		"internetGateway" : {
+			"Type" : "AWS::EC2::InternetGateway",
+			"Properties" : {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "igw" ]] } }]
+			}
+		},
+		"internetGatewayAttachment": {
+			"Type" : "AWS::EC2::VPCGatewayAttachment",
+			"Properties" : {
+				"InternetGatewayId" : { "Ref": "internetGateway" },
+				"VpcId" : { "Ref": "myVPC" }
+			}
+		},
+		"subnetPublic" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "myVPC" },
+				"AvailabilityZone" : {"Ref": "Zone"},
+				"CidrBlock" : { "Fn::Select" : [ 1, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 5, 8 ]}]},
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "public" ]] } }]
+			}
+		},
+		"subnetPrivate" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "myVPC" },
+				"AvailabilityZone" : {"Ref": "Zone"},
+				"CidrBlock" : { "Fn::Select" : [ 2, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 5, 8 ]}]},
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "private" ]] } }]
+			}
+		},
+		"subnetHa" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "myVPC" },
+				"AvailabilityZone" : {"Ref": "Zone"},
+				"CidrBlock" : { "Fn::Select" : [ 3, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 5, 8 ]}]},
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "ha" ]] } }]
+			}
+		},
+		"subnetManagement" : {
+			"Type" : "AWS::EC2::Subnet",
+			"Properties" : {
+				"VpcId" : { "Ref" : "myVPC" },
+				"AvailabilityZone" : {"Ref": "Zone"},
+				"CidrBlock" : { "Fn::Select" : [ 4, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 5, 8 ]}]},
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "management" ]] } }]
+			}
+		},
+		"routeTablePublic" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "public" ]] } }],
+				"VpcId" : { "Ref": "myVPC" }
+			}
+		},
+		"routeTablePublicRouteDefault": {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"DestinationCidrBlock" : "0.0.0.0/0",
+				"RouteTableId": { "Ref": "routeTablePublic" },
+				"GatewayId" : { "Ref": "internetGateway" }
+			}
+		},
+		"routeTablePublicAssociation": {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"RouteTableId" : { "Ref": "routeTablePublic" },
+				"SubnetId" : { "Ref": "subnetPublic" }
+			}
+		},
+		"routeTablePrivate" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "private" ]] } }],
+				"VpcId" : { "Ref": "myVPC" }
+			}
+		},
+		"routeTablePrivateRouteDefault": {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"DestinationCidrBlock" : "0.0.0.0/0",
+				"RouteTableId": { "Ref": "routeTablePrivate" },
+				"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port2" }
+			}
+		},
+		"routeTablePrivateAssociation": {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"RouteTableId" : { "Ref": "routeTablePrivate" },
+				"SubnetId" : { "Ref": "subnetPrivate" }
+			}
+		},
+		"routeTableManagement" : {
+			"Type" : "AWS::EC2::RouteTable",
+			"Properties" : {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "management" ]] } }],
+				"VpcId" : { "Ref": "myVPC" }
+			}
+		},
+		"routeTableManagementRouteDefault": {
+			"Type" : "AWS::EC2::Route",
+			"Properties" : {
+				"DestinationCidrBlock" : "0.0.0.0/0",
+				"RouteTableId": { "Ref": "routeTableManagement" },
+				"GatewayId" : { "Ref": "internetGateway" }
+			}
+		},
+		"routeTableManagementAssociation": {
+			"Type" : "AWS::EC2::SubnetRouteTableAssociation",
+			"Properties" : {
+				"RouteTableId" : { "Ref": "routeTableManagement" },
+				"SubnetId" : { "Ref": "subnetManagement" }
+			}
+		},
+		"interfaceLinuxEth0": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "linux-eth0" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetPrivate" }
+			}
+		},
+		"instanceLinux": {
+		  "Type" : "AWS::EC2::Instance",
+		  "Properties" : {
+				"AvailabilityZone" : {"Ref": "Zone"},
+		      "ImageId" : { "Ref": "ImageClient" },
+		      "InstanceType" : "t2.nano",
+		      "KeyName" : { "Ref": "KeyPair" },
+				"NetworkInterfaces": [ {
+					"DeviceIndex" : "0",
+					"NetworkInterfaceId" : { "Ref": "interfaceLinuxEth0" }
+				} ],
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "linux" ]] } }],
+		      "UserData" : ""
+		    }
+		},
+		"interfaceFortiGate1port1": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port1" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetPublic" },
+				"SourceDestCheck": "false",
+				"SecondaryPrivateIpAddressCount": "1"
+			}
+		},
+		"interfaceFortiGate1port2": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port2" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetPrivate" },
+				"SourceDestCheck": "false",
+				"SecondaryPrivateIpAddressCount": "1"
+			}
+		},
+		"interfaceFortiGate1port3": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port3" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetHa" }
+			}
+		},
+		"interfaceFortiGate1port4": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port4" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetManagement" }
+			}
+		},
+		"publicIpFortiGate1" : {
+			"Type" : "AWS::EC2::EIP",
+			"Properties" : {
+				"Domain" : "vpc",
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-mgmt" ]] } }]
+			}
+		},
+		"publicIpFortiGate1port4Association" : {
+			"Type" : "AWS::EC2::EIPAssociation",
+			"Properties" : {
+				"AllocationId" : { "Fn::GetAtt" : [ "publicIpFortiGate1", "AllocationId" ]},
+				"NetworkInterfaceId" : {"Ref": "interfaceFortiGate1port4"}
+			}
+		},
+		"instanceFortiGate1": {
+		  "Type" : "AWS::EC2::Instance",
+		  "Properties" : {
+				"AvailabilityZone" : {"Ref": "Zone"},
+		      "ImageId" : { "Ref": "ImageFortiGate" },
+		      "InstanceType" : "t3.xlarge",
+		      "KeyName" : { "Ref": "KeyPair" },
+				"IamInstanceProfile": { "Ref": "Role" },
+				"NetworkInterfaces": [
+					{
+						"DeviceIndex" : "0",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port1" }
+					},
+					{
+						"DeviceIndex" : "1",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port2" }
+					},
+					{
+						"DeviceIndex" : "2",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port3" }
+					},
+					{
+						"DeviceIndex" : "3",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port4" }
+					}
+				],
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1" ]] } }],
+				"UserData" : {
+					"Fn::Base64" : {
+						"Fn::Join" : [ "", [
+							"config system global\n",
+							  "set hostname fgt1\n",
+							  "set admintimeout 480\n",
+							"end\n",
+							"config system interface\n",
+							  "edit port1\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::Select": [0, { "Fn::GetAtt" : [ "interfaceFortiGate1port1", "SecondaryPrivateIpAddresses" ] }] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port2\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::Select": [0, { "Fn::GetAtt" : [ "interfaceFortiGate1port2", "SecondaryPrivateIpAddresses" ] }] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port3\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate1port3", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port4\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate1port4", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							"end\n",
+							"config router static\n",
+							  "edit 0\n",
+							    "set device port1\n",
+								 "set gateway ",
+									{"Fn::Join" : [".", [
+								    	{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port1", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port1", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port1", "PrimaryPrivateIpAddress" ] }] }]},
+										"1"
+									]]},
+								   "\n",
+							  "next\n",
+							"end\n",
+							"config firewall vip\n",
+							  "edit linux-client\n",
+							  "set mappedip ",
+							    {"Fn::GetAtt" : [ "interfaceLinuxEth0", "PrimaryPrivateIpAddress" ] },
+							    "\n",
+							  "set extintf port1\n",
+							  "set portforward enable\n",
+							  "set extport 2222\n",
+							  "set mappedport 22\n",
+							  "next\n",
+							"end\n",
+							"config firewall policy\n",
+							  "edit 0\n",
+							    "set name 'DNAT to Linux client'\n",
+							    "set srcintf port1\n",
+							    "set dstintf port2\n",
+							    "set srcaddr all\n",
+							    "set dstaddr linux-client\n",
+							    "set action accept\n",
+							    "set schedule always\n",
+							    "set service SSH\n",
+							    "set nat enable\n",
+							  "next\n",
+							  "edit 0\n",
+							    "set name 'Internal to Internet'\n",
+							    "set srcintf port2\n",
+							    "set dstintf port1\n",
+							    "set srcaddr all\n",
+							    "set dstaddr all\n",
+							    "set action accept\n",
+							    "set schedule always\n",
+							    "set service ALL\n",
+							    "set nat enable\n",
+							  "next\n",
+							"end\n",
+							"config system ha\n",
+							  "set group-name fgtha\n",
+							  "set mode a-p\n",
+							  "set password topsecret\n",
+							  "set hbdev port3 50\n",
+							  "set session-pickup enable\n",
+							  "set session-pickup-connectionless enable\n",
+							  "set ha-mgmt-status enable\n",
+							  "config ha-mgmt-interfaces\n",
+							    "edit 0\n",
+							    "set interface port4\n",
+							    "set gateway ",
+									{"Fn::Join" : [".", [
+								    	{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port4", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port4", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate1port4", "PrimaryPrivateIpAddress" ] }] }]},
+										"1"
+									]]},
+								   "\n",
+							    "next\n",
+							  "end\n",
+							  "set override enable\n",
+							  "set priority 200\n",
+							  "set unicast-hb enable\n",
+							  "set unicast-hb-peerip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate2port3", "PrimaryPrivateIpAddress" ] },
+								 "\n",
+							"end\n"
+						] ]
+					}
+			 	}
+		    }
+		},
+		"interfaceFortiGate2port1": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port1" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetPublic" },
+				"SourceDestCheck": "false"
+			}
+		},
+		"interfaceFortiGate2port2": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port2" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetPrivate" },
+				"SourceDestCheck": "false"
+			}
+		},
+		"interfaceFortiGate2port3": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port3" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetHa" }
+			}
+		},
+		"interfaceFortiGate2port4": {
+			"Type": "AWS::EC2::NetworkInterface",
+			"Properties": {
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port4" ]] } }],
+				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
+				"SubnetId": { "Ref" : "subnetManagement" }
+			}
+		},
+		"publicIpFortiGate2" : {
+			"Type" : "AWS::EC2::EIP",
+			"Properties" : {
+				"Domain" : "vpc",
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-mgmt" ]] } }]
+			}
+		},
+		"publicIpFortiGate2port4Association" : {
+			"Type" : "AWS::EC2::EIPAssociation",
+			"Properties" : {
+				"AllocationId" : { "Fn::GetAtt" : [ "publicIpFortiGate2", "AllocationId" ]},
+				"NetworkInterfaceId" : {"Ref": "interfaceFortiGate2port4"}
+			}
+		},
+		"instanceFortiGate2": {
+		  "Type" : "AWS::EC2::Instance",
+		  "Properties" : {
+		      "ImageId" : { "Ref": "ImageFortiGate" },
+				"AvailabilityZone" : {"Ref": "Zone"},
+		      "InstanceType" : "t3.xlarge",
+		      "KeyName" : { "Ref": "KeyPair" },
+				"IamInstanceProfile": { "Ref": "Role" },
+				"NetworkInterfaces": [
+					{
+						"DeviceIndex" : "0",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate2port1" }
+					},
+					{
+						"DeviceIndex" : "1",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate2port2" }
+					},
+					{
+						"DeviceIndex" : "2",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate2port3" }
+					},
+					{
+						"DeviceIndex" : "3",
+						"NetworkInterfaceId" : { "Ref": "interfaceFortiGate2port4" }
+					}
+				],
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2" ]] } }],
+				"UserData" : {
+					"Fn::Base64" : {
+						"Fn::Join" : [ "", [
+							"config system global\n",
+							  "set hostname fgt2\n",
+							  "set admintimeout 480\n",
+							"end\n",
+							"config system interface\n",
+							  "edit port1\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate2port1", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port2\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate2port2", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port3\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate2port3", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							  "edit port4\n",
+							  "set mode static\n",
+							  "set ip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate2port4", "PrimaryPrivateIpAddress" ] },
+							    "/24\n",
+							  "set allowaccess ping https ssh\n",
+							  "next\n",
+							"end\n",
+							"config router static\n",
+							  "edit 0\n",
+							    "set device port1\n",
+								 "set gateway ",
+									{"Fn::Join" : [".", [
+								    	{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port1", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port1", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port1", "PrimaryPrivateIpAddress" ] }] }]},
+										"1"
+									]]},
+								   "\n",
+							  "next\n",
+							"end\n",
+							"config system ha\n",
+							  "set group-name fgtha\n",
+							  "set mode a-p\n",
+							  "set password topsecret\n",
+							  "set hbdev port3 50\n",
+							  "set session-pickup enable\n",
+							  "set session-pickup-connectionless enable\n",
+							  "set ha-mgmt-status enable\n",
+							  "config ha-mgmt-interfaces\n",
+							    "edit 0\n",
+							    "set interface port4\n",
+							    "set gateway ",
+									{"Fn::Join" : [".", [
+								    	{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port4", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port4", "PrimaryPrivateIpAddress" ] }] }]},
+								    	{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::GetAtt" : [ "interfaceFortiGate2port4", "PrimaryPrivateIpAddress" ] }] }]},
+										"1"
+									]]},
+								   "\n",
+							    "next\n",
+							  "end\n",
+							  "set override enable\n",
+							  "set priority 100\n",
+							  "set unicast-hb enable\n",
+							  "set unicast-hb-peerip ",
+							    { "Fn::GetAtt" : [ "interfaceFortiGate1port3", "PrimaryPrivateIpAddress" ] },
+								 "\n",
+							"end\n"
+						] ]
+					}
+			 	}
+		    }
+		},
+		"publicIpCluster" : {
+			"Type" : "AWS::EC2::EIP",
+			"Properties" : {
+				"Domain" : "vpc",
+				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "cluster" ]] } }]
+			}
+		},
+		"publicIpClusterport1Association" : {
+			"Type" : "AWS::EC2::EIPAssociation",
+			"Properties" : {
+				"AllocationId" : { "Fn::GetAtt" : [ "publicIpCluster", "AllocationId" ]},
+				"NetworkInterfaceId" : { "Ref": "interfaceFortiGate1port1"},
+				"PrivateIpAddress" : { "Fn::Select": [0, { "Fn::GetAtt" : ["interfaceFortiGate1port1", "SecondaryPrivateIpAddresses"] }] }
+			}
+		}
+	},
+	"Outputs" : {
+	}
+}
