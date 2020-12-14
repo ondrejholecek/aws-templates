@@ -1,19 +1,19 @@
 {
-	"Description" : "Deploys two FortiGates with HA and one Linux client in the same AZ",
+	"Description" : "Deploys two FortiGates with HA and one Linux client in the same AZ.",
 	"Parameters" : {
 		"Username" : {
 			"Type" : "String",
 			"MinLength": "3",
-			"Description" : "Enter your LDAP username (text before the '@' of your email address)"
+			"Description" : "Enter your LDAP username (text before the '@' of your email address)."
 		},
 		"VpcRange" : {
 			"Type" : "String",
 			"Default": "10.20.0.0",
-			"Description" : "Enter VPC IP range of the new VPC (/16 is used)"
+			"Description" : "Enter VPC IP range of the new VPC (/16 is used)."
 		},
 		"KeyPair" : {
 			"Type": "AWS::EC2::KeyPair::KeyName",
-			"Description" : "Enter the SSH keypair to use for logging in"
+			"Description" : "Enter the SSH keypair to use for logging in."
 		},
 		"Role" : {
 			"Type": "String",
@@ -22,7 +22,7 @@
 		},
 		"Zone" : {
 			"Type": "AWS::EC2::AvailabilityZone::Name",
-			"Description" : "Select Availability zone where to deploy both FortiGates"
+			"Description" : "Select Availability zone where to deploy both FortiGates."
 		},
 		"ImageFortiGate" : {
 			"Type": "AWS::EC2::Image::Id",
