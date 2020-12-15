@@ -29,7 +29,7 @@
 			let internal;
 			let ha;
 			let mgmt;
-			if (setupType == "apha-same-zone") {
+			if (setupType == "apha-single-zone") {
 				external = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.1.0"));
 				internal = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.2.0"));
 				ha       = IPv4_number_to_string((ip&mask)+IPv4_string_to_number("0.0.3.0"));
@@ -89,7 +89,7 @@
 			$('#config-intrazone-ec2-first input[type=text][name=port1SecondaryIp]').val(port1secondary);
 
 			// second device
-			if (setupType == "apha-same-zone") {
+			if (setupType == "apha-single-zone") {
 				port1primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-subnets-first input[type=text][name=externalNetwork]').val())+5);
 				port1secondary = IPv4_number_to_string(IPv4_string_to_number($('#config-subnets-first input[type=text][name=externalNetwork]').val())+6);
 				port2primary   = IPv4_number_to_string(IPv4_string_to_number($('#config-subnets-first input[type=text][name=internalNetwork]').val())+5);
@@ -128,7 +128,7 @@
 			let port2Ip;
 			let port1Mask;
 			let port2Mask;
-			if (setupType == "apha-same-zone") {
+			if (setupType == "apha-single-zone") {
 				port1Ip = $('#config-intrazone-nics-'+thisDeviceSuffix+' input[type=text][name=port1SecondaryIp]').val();
 				port2Ip = $('#config-intrazone-nics-'+thisDeviceSuffix+' input[type=text][name=port2SecondaryIp]').val();
 				port1Mask = $('#config-subnets-'+thisDeviceSuffix+' input[type=text][name=externalMask]').val();
@@ -285,7 +285,7 @@
 				config += 'end\n';
 				config += '\n';
 				// firewall address for split tunneling
-				if (setupType == "apha-same-zone") {
+				if (setupType == "apha-single-zone") {
 					let internalIp   = IPv4_string_to_number(port2Ip);
 					let internalMask = IPv4_cidr_to_number(port2Mask);
 					let internalNet  = IPv4_number_to_string(internalIp&internalMask);
@@ -405,15 +405,15 @@
 			// retrieve current setup type
 			setupType = document.location.hash;
 			if (setupType.substring(0, 1) == "#") setupType = setupType.substring(1);
-			if (setupType.length == 0) setupType = "apha-same-zone";
+			if (setupType.length == 0) setupType = "apha-single-zone";
 			$('#static-buttons fieldset[name=setup-type] input[type=radio][value='+setupType+']').prop("checked", true);
 			
 			// show the right content
-			if (setupType == "apha-same-zone") {
+			if (setupType == "apha-single-zone") {
 				$('.apha-multi-zone').hide();
-				$('.apha-same-zone').show();
+				$('.apha-single-zone').show();
 			} else if (setupType == "apha-multi-zone") {
-				$('.apha-same-zone').hide();
+				$('.apha-single-zone').hide();
 				$('.apha-multi-zone').show();
 			} 
 
@@ -451,7 +451,7 @@
 </head>
 <body onload="onload()">
 	<div id="main-content">
-	<h1 class="apha-same-zone  first-title">FortiGate native same-zone A-P HA in AWS</h1>
+	<h1 class="apha-single-zone first-title">FortiGate native single-zone A-P HA in AWS</h1>
 	<h1 class="apha-multi-zone first-title">FortiGate native multi-zone A-P HA in AWS</h1>
 
 	<h2>Design</h2>
@@ -461,7 +461,7 @@
 		<p class="apha-multi-zone">Be aware that FortiGate in AWS will automatically recognize the HA setup between
 		multiple availability zones and adjust its HA failover behavior. The principles shown on this page may not
 		work correctly with single-zone HA configuration.</p>
-		<p class="apha-same-zone" >Be aware that FortiGate in AWS will automatically recognize the HA setup within
+		<p class="apha-single-zone" >Be aware that FortiGate in AWS will automatically recognize the HA setup within
 		the same availability zone and adjust its HA failover behavior. The principles shown on this page may not
 		work correctly with multi-zone HA configuration.</p>
 
@@ -481,11 +481,11 @@
 		<ul>
 		<li>To be able to attach at least 4 network interfaces, the instance ("VM") size in AWS must contain at least 4 CPU.
 		    Smalles usable size in this case is "t3.xlarge".</li>
-		<li class="apha-same-zone">Network interfaces in AWS matching port1 and port2 interfaces on FortiGate must be configured
+		<li class="apha-single-zone">Network interfaces in AWS matching port1 and port2 interfaces on FortiGate must be configured
 		    with primary and secondary address. However, in FortiGate config file the AWS primary address is not used at all and
 		    there isn't any secondary IP configuration enabled.
 			 Both interfaces are statically configured with "set ip ..." using the secondary address from AWS configuration.</li>
-		<li class="apha-same-zone">FortiGate configuration in the cluster is fully synchronized, including the network interfaces
+		<li class="apha-single-zone">FortiGate configuration in the cluster is fully synchronized, including the network interfaces
 		    and routing sections. This is possible because the IP addresses configured on port1 and port2 are "floating" in AWS
 		    configuration.</li>
 		<li class="apha-multi-zone">Network interfaces on master and slave devices must not be synchronized because they live in
@@ -500,7 +500,7 @@
 		    HA failover.</li>
 		<li>After HA failover the new master FortiGate device:
 			<ul>
-			<li class="apha-same-zone">Moves the secondary IPs configured on port1 and port2 in AWS to the respective interfaces of
+			<li class="apha-single-zone">Moves the secondary IPs configured on port1 and port2 in AWS to the respective interfaces of
 			    the new master device.</li>
 			<li>Re-assigns the "floating" public IP to the port1 of the new master device.</li>
 			<li>Re-assigns the default route in subnet connected to port2 via port2 interface of the new master device.</li>
@@ -519,7 +519,7 @@
 			<ul>
 			<li>The VPC IP range does not matter and you can keep the default one unless you plan to interconnect
 			    different VPCs in the future.</li>
-			<li class="apha-same-zone">Create four new subnets in the VPC using the IP range configuration from the table bellow.
+			<li class="apha-single-zone">Create four new subnets in the VPC using the IP range configuration from the table bellow.
 			    Make sure you explicitly select the same "Availability zone" for each newly created subnet.
 			    <span class="note">(Otherwise you won't be able to attach the interface to VM later.)</span></li>
 			<li class="apha-multi-zone">Create eight new subnets in the VPC using the IP range configuration from the table bellow.
@@ -552,7 +552,7 @@
 	
 			<h3>Create new "external" route table</h3>
 			<ul>
-			<li class="apha-same-zone" >Associate it to "external" subnet.</li>
+			<li class="apha-single-zone" >Associate it to "external" subnet.</li>
 			<li class="apha-multi-zone">Associate it to both "external" subnets.</li>
 			<li>In the route table create new route with destination "0.0.0.0/0" and as the target use the previously created Internet gateway.
 			    <span class="note">(This is necessary for the shared public IP that will be attached later.)</span></li>
@@ -560,7 +560,7 @@
 	
 			<h3>Create new "management" route table</h3>
 			<ul>
-			<li class="apha-same-zone" >Associate it to "management" subnet.</li>
+			<li class="apha-single-zone" >Associate it to "management" subnet.</li>
 			<li class="apha-multi-zone">Associate it to both "management" subnets.</li>
 			<li>In the route table create new route with destination "0.0.0.0/0" and as the target use the previously created Internet gateway.
 			    <span class="note">(This is necessary for the dedicated management public IP that will be attached later.)</span></li>
@@ -568,7 +568,7 @@
 	
 			<h3>Create new "internal" route table</h3>
 			<ul>
-			<li class="apha-same-zone" >Associate it to "internal" subnet.</li>
+			<li class="apha-single-zone" >Associate it to "internal" subnet.</li>
 			<li class="apha-multi-zone">Associate it to both "internal" subnets.</li>
 			</ul>
 			<p><span class="note">Default route via port2 of master FortiGate device will be added later when the first FortiGate VM is deployed.</span></p>
@@ -603,12 +603,12 @@
 			<ul>
 			<li>In EC2 AWS console create three interfaces for first FortiGate device and another three for the second FortiGate device.
 			    <span class="note">(It is wise to use tag "Name" with identification of FortiGate device and its port name to find it later easily.)</span></li>
-			<li class="apha-same-zone" >Attach each interface to the right network <b>subnet</b>. <span class="note">(Use the table bellow.)</span></li>
+			<li class="apha-single-zone" >Attach each interface to the right network <b>subnet</b>. <span class="note">(Use the table bellow.)</span></li>
 			<li class="apha-multi-zone">Attach each interface to the right network <b>subnet</b> in the right "Availability zone".
 			    <span class="note">(Use the table bellow.)</span></li>
 			<li>Select "Custom" <b>IPv4 Private IP</b> and specify the right primary IP address. <span class="note">(Use the table bellow.)</span></li>
 			<li>As the <b>security group</b> select the one you created in previous section.</li>
-			<li class="apha-same-zone">When port2 interface for first FortiGate device is created, right click on it, select <b>Manage IP Addresses</b> and add the secondary IP addresses.
+			<li class="apha-single-zone">When port2 interface for first FortiGate device is created, right click on it, select <b>Manage IP Addresses</b> and add the secondary IP addresses.
 			    <span class="note">(Use the table bellow.) (Be aware that this is done only for the first FortiGate device which will start as the master.)</span></li>
 			</ul>
 
@@ -618,7 +618,7 @@
 				<tr class="disabled"><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
 				<tr class="disabled"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
 				<tr><td>Port2 ("internal") primary IP:</td><td><input type="text" name="port2PrimaryIp" value=""/></td></tr>
-				<tr class="apha-same-zone"><td>Port2 ("internal") secondary IP:</td><td><input type="text" name="port2SecondaryIp" value=""/></td></tr>
+				<tr class="apha-single-zone"><td>Port2 ("internal") secondary IP:</td><td><input type="text" name="port2SecondaryIp" value=""/></td></tr>
 				<tr><td>Port3 ("ha") primary IP:</td><td><input type="text" name="port3PrimaryIp" value=""/></td></tr>
 				<tr><td>Port4 ("management") primary IP:</td><td><input type="text" name="port4PrimaryIp" value=""/></td></tr>
 			</table>
@@ -642,7 +642,7 @@
 			<li>On the "Instance details" configuration page select:
 				<ul>
 					<li><b>Network</b> : The VPC you created in the first section of this guide.</li>
-					<li class="apha-same-zone" ><b>Subnet</b> : The external subnet you created before. AWS will use this as port1 FortiGate interface.</li>
+					<li class="apha-single-zone" ><b>Subnet</b> : The external subnet you created before. AWS will use this as port1 FortiGate interface.</li>
 					<li class="apha-multi-zone"><b>Subnet</b> : The external subnet you created before. For the first FortiGate select the external subnet you created in
 					    first "Availablity zone" and for the second FortiGate select the external subnet you created in the second "Availability zone".
 					    AWS will use this as port1 FortiGate interface.</li>
@@ -650,7 +650,7 @@
 					    <a href="javascript:$('#dialog-iam-role-unicast-ha').trigger('openDialog')">
 					    the right IAM role</a> must be created in advance.</li>
 					<li>
-						<span class="apha-same-zone"><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary (only for
+						<span class="apha-single-zone"><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary and secondary (only for
 						      first "master" FortiGate) IP addresses based on the following table:</span>
 						<span class="apha-multi-zone"><b>Network interfaces</b> : For auto-generated interface "eth0" specify primary IP addresses based on the
 						      following table:</span>
@@ -659,7 +659,7 @@
 						<table id="config-intrazone-ec2-first" data-clone="config-intrazone-ec2-second" data-switch="device-specific">
 							<tr><td colspan="2"><input type="button" name="generate" value="Generate IPs from subnets" onclick="generate_nics_config()"/></td></tr>
 							<tr><td>Port1 ("external") primary IP:</td><td><input type="text" name="port1PrimaryIp" value=""/></td></tr>
-							<tr class="apha-same-zone"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
+							<tr class="apha-single-zone"><td>Port1 ("external") secondary IP:</td><td><input type="text" name="port1SecondaryIp" value=""/></td></tr>
 						</table>
 					</li>
 					<li><b>User data</b> : Content of this field is the configuration that is automatically merged when the FortiGate boots up for the first time.
@@ -689,7 +689,7 @@
 				    and attach the pre-created interfaces port2, port3 and port4 respectively. <span class="note">(Be aware that this must be done fast enough to be finished before the
 				    VM finishes booting, otherwise the configuration will fail due to the missing interfaces.) (Make sure you attach the right interfaces in the right order to the right device.)</span></li>
 				<li>It is wise to change the interface name for the new port1 interface created by AWS during the deployment to conform with names of other interfaces you created manually.</li>
-				<li class="apha-same-zone" >Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate"), but do not specify the secondary IP address for second ("slave") FortiGate.</li>
+				<li class="apha-single-zone" >Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate"), but do not specify the secondary IP address for second ("slave") FortiGate.</li>
 				<li class="apha-multi-zone">Repeat this section to deploy the second FortiGate (with the tables switched to "Second FortiGate").</li>
 			</ul>
 
@@ -699,7 +699,7 @@
 		<h2>Finish the VPC configuration</h2>
 		<div name="indent1">
 			<ul>
-			<li class="apha-same-zone" >Associate the <b>shared</b> public IP to the <b>Resource type</b> "Network interface" and select secondary IP of port1 interface of the master FortiGate
+			<li class="apha-single-zone" >Associate the <b>shared</b> public IP to the <b>Resource type</b> "Network interface" and select secondary IP of port1 interface of the master FortiGate
 			    <span class="note">(that should be the first one)</span>.
 			    <span class="note">(Because the FortiGate has only the secondary IP from AWS configuration configured as primary.)</li>
 			<li class="apha-multi-zone">Associate the <b>shared</b> public IP to the <b>Resource type</b> "Network interface" and select primary IP of port1 interface of the master FortiGate.</li>
@@ -730,7 +730,7 @@
 			    <b>shared</b> public IP.</li>
 			<li>Any additional device running in the "internal" subnet should access Internet through port2 of the master
 			    FortiGate device. Using the IPSec connection it should also be possible to connect to this device from outside.</li>
-			<li class="apha-same-zone" >After HA failover <span class="note">(that can be triggered either by rebooting the current master or by simply
+			<li class="apha-single-zone" >After HA failover <span class="note">(that can be triggered either by rebooting the current master or by simply
 			    changing its HA priority with "override" enabled)</span> the <b>shared</b> public IP, port1 and port2 secondary IPs in AWS,
 			    and "internal" subnet default route should be moved to the new master FortiGate.
 				 <span class="note">Debug "diagnose debug application awsd -1" can be really helpful when troubleshooting a problem here.</span></li>
@@ -777,8 +777,8 @@
 	<fieldset name="setup-type">
 		<legend>Setup type:</legend>
 		<div>
-			<input type="radio" id="setup-type-apha-same-zone" name="setup-type" value="apha-same-zone"/>
-			<label for="setup-type-apha-same-zone">Same-zone A-P</label>
+			<input type="radio" id="setup-type-apha-single-zone" name="setup-type" value="apha-single-zone"/>
+			<label for="setup-type-apha-single-zone">Single-zone A-P</label>
 		</div><div>
 			<input type="radio" id="setup-type-apha-multi-zone" name="setup-type" value="apha-multi-zone"/>
 			<label for="setup-type-apha-multi-zone">Multi-zone A-P</label>
