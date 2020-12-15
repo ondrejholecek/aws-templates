@@ -17,7 +17,8 @@
 		},
 		"Role" : {
 			"Type": "String",
-			"Description" : "Select IAM role you want to assign",
+			"Description" : "Select IAM role you want to assign. 'FortiOS_generic' contains all the privileges necessary to test FortiGates.",
+			"Default": "FortiOS_unicast_HA",
 			"AllowedValues": [ "FortiOS_unicast_HA", "FortiOS_bootstrapping", "FortiOS_SDN_connector", "FortiOS_generic" ]
 		},
 		"Zone" : {
