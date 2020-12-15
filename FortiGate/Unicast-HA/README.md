@@ -20,6 +20,11 @@ Any configuration can be changed after deployment.
 
 In single-zone setup there are 4 different networks attached (public, private, HA, management) attached to each FortiGate (port1, port2, port3, port4 respectively). 
 
+There is one automatically created route table which is used for "ha" network, and 3 explicitly created routing tables:
+  - **public** : attached to "public" network, with default route via Internet gateway in VPC.
+  - **private** : attached to "private" network, with default route via port2 of the master FortiGate.
+  - **management** : attached to "management" network, with default route via Internet gateway in VPC.
+
 Both master and slave FortiGates share the same subnets and therefore need to have different IP addresses. However, for public and private networks (port1 and port2) the primary IP addresses configured in AWS are not used and instead the same one address configured as secondary in AWS is used on both FortiGates as a standard ("primary") IP. Thanks to this, the sessions going between port1 and port2 can continue after failover even when NAT is enabled.
 
 ### Step-by-step configuration guide
@@ -48,6 +53,19 @@ When you are done with testing, please delete the Stack - it should automaticall
 [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://console.aws.amazon.com/cloudformation/home#/stacks/new?stackName=FortiGate-APHA-singlezone&templateURL=https://emea-tac-public-templates.s3-eu-west-1.amazonaws.com/fgt-ha-ap-single-zone.json)
 
 ## Multi zone
+
+### Description
+
+In multi-zone setup there are 8 different networks attached. Four of them are created in the first Availability zone (public1, private1, ha1, management1) and attached to first FortiGate's interfaces (port1, port2, port3, port4 respectively) and another four are created in the second Availability zone (public2, private2, ha2, management2) and attached to second FortiGate's interfaces. 
+
+There is one automatically created route table which is used for "ha1" and "ha2" networks, and 3 explicitly created routing tables:
+  - **public** : attached to "public1" and "public2" networks, with default route via Internet gateway in VPC.
+  - **private** : attached to "private1" and "private2" networks, with default route via port2 of the master FortiGate.
+  - **management** : attached to "management1" and "management2" networks, with default route via Internet gateway in VPC.
+
+Because all devices are in single VPC, they can all communicate together and share route tables, regardless of being in different Availability zones.
+
+However, being in different Availability zones, local IP addresses are different on each FortiGate and therefore NATed sessions (which will be probably most of them) cannot continue after HA failover and they need to be restarted by clients.
 
 ### Step-by-step configuration guide
 
