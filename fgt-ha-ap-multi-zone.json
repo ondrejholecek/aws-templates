@@ -236,6 +236,12 @@
 		"interfaceLinuxEth0": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"100"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "linux-eth0" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetPrivate1" }
@@ -259,6 +265,12 @@
 		"interfaceFortiGate1port1": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 11, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 11, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 11, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"4"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port1" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetPublic1" },
@@ -268,6 +280,12 @@
 		"interfaceFortiGate1port2": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 12, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"4"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port2" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetPrivate1" },
@@ -277,6 +295,12 @@
 		"interfaceFortiGate1port3": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 13, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 13, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 13, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"4"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port3" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetHa1" }
@@ -285,6 +309,12 @@
 		"interfaceFortiGate1port4": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 14, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 14, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 14, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"4"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt1-port4" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetManagement1" }
@@ -474,6 +504,12 @@
 		"interfaceFortiGate2port1": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 21, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 21, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 21, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"5"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port1" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetPublic2" },
@@ -483,6 +519,12 @@
 		"interfaceFortiGate2port2": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 22, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 22, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 22, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"5"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port2" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetPrivate2" },
@@ -492,6 +534,12 @@
 		"interfaceFortiGate2port3": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 23, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 23, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 23, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"5"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port3" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetHa2" }
@@ -500,6 +548,12 @@
 		"interfaceFortiGate2port4": {
 			"Type": "AWS::EC2::NetworkInterface",
 			"Properties": {
+				"PrivateIpAddress": {"Fn::Join" : [".", [
+					{"Fn::Select": [0, { "Fn::Split" : [".", { "Fn::Select" : [ 24, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [1, { "Fn::Split" : [".", { "Fn::Select" : [ 24, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					{"Fn::Select": [2, { "Fn::Split" : [".", { "Fn::Select" : [ 24, { "Fn::Cidr" : [{ "Fn::GetAtt": ["myVPC", "CidrBlock"]}, 30, 8 ]}]} ] }]},
+					"5"
+				]]},
 				"Tags" : [{"Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ {"Ref":"Username"}, "fgt2-port4" ]] } }],
 				"GroupSet": [{ "Ref" : "securityGroupAllowAll" }],
 				"SubnetId": { "Ref" : "subnetManagement2" }
