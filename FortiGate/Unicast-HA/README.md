@@ -9,6 +9,8 @@ Everybody can use it, but it is mainly meant for Fortinet TAC engineers to run s
   - In all example the HA is configured with override enabled and FortiGate1 set with higher priority to keep the setup predictable.
   - Step-by-step guides also create IPsec dialup server by default which CloudFormation templates don't do.
   - There is no SDN configuration prepared because it is not necessary for HA to work in AWS (unlike in Azure). 
+  - After deployment the FortiGates reboot several times until they are fully useful. This can be confusing but it is normal.
+  - Both FortiGate are preconfigured to form the HA, which happens right after they both boot up, but it takes several minutes for slave to synchronize its configuration file.
   
 Any configuration can be changed after deployment.
 
@@ -30,7 +32,7 @@ With default VPC range the setup look like on othe following diagram.
 
 ![Single Zone HA (CloudFormation template)](fgt-ha-ap-single-zone.png)
 
-CloudFormation Stack template is stored in EMEA TAC account. In case somebody deletes it, [download it manually from here](fgt-ha-ap-single-zone.json) and upload to CloudFormation as file.
+CloudFormation Stack template is stored in S3 in EMEA TAC account and it is not automatically synchronizing with this repository. In case somebody deletes it, [download it manually from here](fgt-ha-ap-single-zone.json) and upload to CloudFormation as file.
 
 Following parameters are requested when deploying the Stack:
   - **ImageClient** : This is the AMI ID (in the form of "ami-1234abcd5678efgh") of the client's VM operating system. It is expected that this is Linux VM, but in fact the OS should not matter (however, keep in mind that only port 2222 of the "Cluster IP" is forwarded to its port 22 by default). *All AMIs are unique to the region you are deploying it in. You can find the right ID in "EC2 >> Images >> AMIs" and search for "Public images" with "AMI Name : ^debian-10".*
@@ -57,7 +59,7 @@ With default VPC range the setup look like on othe following diagram.
 
 ![Multi Zone HA (CloudFormation template)](fgt-ha-ap-multi-zone.png)
 
-CloudFormation Stack template is stored in EMEA TAC account. In case somebody deletes it, [download it manually from here](fgt-ha-ap-multi-zone.json) and upload to CloudFormation as file.
+CloudFormation Stack template is stored in S3 in EMEA TAC account and it is not automatically synchronizing with this repository. In case somebody deletes it, [download it manually from here](fgt-ha-ap-multi-zone.json) and upload to CloudFormation as file.
 
 The parameters requested by CloudFormation Stack template are the same as for Single-zone setup, only instead of one parameter "Zone" there are two - "Zone1" and "Zone2". In "Zone1" first FortiGate and client VM are created and in "Zone2" only the second FortiGate is created.
 
